@@ -1,5 +1,5 @@
-/* 離線快取：讓 APP 加入主畫面後可離線使用 */
-const CACHE_NAME = 'fitness-app-v1';
+/* 離線快取：網路優先（有網路抓最新版，離線時用快取） */
+const CACHE_NAME = 'fitness-app-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -26,17 +26,16 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then(
-      (cached) =>
-        cached ||
-        fetch(event.request).then((res) => {
-          if (event.request.method === 'GET' && res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          }
-          return res;
-        })
-    )
+    fetch(event.request)
+      .then((res) => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(event.request))
   );
 });

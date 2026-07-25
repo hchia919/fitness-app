@@ -18,6 +18,9 @@
   ];
   const emojiOf = (type) =>
     (SPORT_TYPES.find((t) => t.name === type) || { emoji: '💪' }).emoji;
+  const INTENSITY_EMOJI = { 輕鬆: '😌', 適中: '🙂', 激烈: '🥵' };
+  const PRAISES = ['太棒了！🎉', '超讚的！✨', '繼續保持！🔥', '你最棒了！💖', '離目標又近一步！🚀'];
+  const praise = () => PRAISES[Math.floor(Math.random() * PRAISES.length)];
 
   /* ---------- 資料存取 ---------- */
   let records = load();
@@ -55,8 +58,8 @@
   const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
   function dateLabel(dateStr) {
     const t = todayStr();
-    if (dateStr === t) return '今天';
-    if (dateStr === addDays(t, -1)) return '昨天';
+    if (dateStr === t) return '今天 🌟';
+    if (dateStr === addDays(t, -1)) return '昨天 ⭐';
     const d = new Date(dateStr + 'T00:00:00');
     return `${d.getMonth() + 1}/${d.getDate()}（${WEEKDAYS[d.getDay()]}）`;
   }
@@ -102,7 +105,7 @@
         const meta = [`${r.minutes} 分鐘`];
         if (r.distance) meta.push(`${r.distance} 公里`);
         if (r.calories) meta.push(`${r.calories} 大卡`);
-        if (r.intensity) meta.push(r.intensity);
+        if (r.intensity) meta.push(`${INTENSITY_EMOJI[r.intensity] || ''} ${r.intensity}`.trim());
 
         const card = document.createElement('div');
         card.className = 'record-card';
@@ -156,7 +159,7 @@
 
   function openForm(record) {
     editingId = record ? record.id : null;
-    formTitle.textContent = record ? '編輯紀錄' : '新增紀錄';
+    formTitle.textContent = record ? '✏️ 編輯紀錄' : '✨ 新增紀錄';
     form.reset();
     form.elements.date.value = record ? record.date : todayStr();
     if (record) {
@@ -194,10 +197,10 @@
     if (editingId !== null) {
       const idx = records.findIndex((r) => r.id === editingId);
       if (idx >= 0) records[idx] = { ...records[idx], ...data };
-      toast('已更新');
+      toast('已更新 ✅');
     } else {
       records.push({ id: Date.now(), ...data });
-      toast('已新增 💪');
+      toast(praise());
     }
     save();
     closeForm();
@@ -268,7 +271,7 @@
         tooltip: `${type}：${minutes} 分鐘`,
       }));
     if (items.length === 0) {
-      container.innerHTML = '<p class="chart-empty">最近 30 天還沒有紀錄</p>';
+      container.innerHTML = '<p class="chart-empty">🌱 最近 30 天還沒有紀錄</p>';
       return;
     }
     drawBarChart(container, items);
@@ -278,7 +281,7 @@
   function drawBarChart(container, items) {
     container.innerHTML = '';
     if (items.every((it) => it.value === 0)) {
-      container.innerHTML = '<p class="chart-empty">這段期間還沒有紀錄</p>';
+      container.innerHTML = '<p class="chart-empty">🌱 這段期間還沒有紀錄</p>';
       return;
     }
 
@@ -432,7 +435,7 @@
       });
       save();
       renderList();
-      toast(`已匯入 ${added} 筆紀錄`);
+      toast(`已匯入 ${added} 筆紀錄 🎒`);
     } catch {
       toast('匯入失敗：檔案格式不正確');
     }

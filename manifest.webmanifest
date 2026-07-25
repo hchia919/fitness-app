@@ -1,0 +1,18 @@
+{
+  "name": "我的運動紀錄",
+  "short_name": "運動紀錄",
+  "description": "個人運動紀錄 APP：紀錄每次運動的類型、時間與距離，查看每週統計。",
+  "lang": "zh-Hant",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f9f9f7",
+  "theme_color": "#2a78d6",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

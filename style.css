@@ -175,6 +175,11 @@ main { padding: 16px; max-width: 640px; margin: 0 auto; }
   background: var(--series-1);
   color: #fff;
 }
+.strip-dot.recover {
+  color: inherit;
+  font-size: 17px;
+  background: color-mix(in srgb, #9085e9 18%, var(--surface-1));
+}
 .strip-dot.today {
   outline: 2px solid var(--series-1);
   outline-offset: 2px;
@@ -189,6 +194,7 @@ main { padding: 16px; max-width: 640px; margin: 0 auto; }
 }
 .today-emojis { font-size: 28px; margin-bottom: 6px; }
 .today-done { font-size: 14px; color: var(--text-secondary); }
+.today-recover { margin-top: 4px; font-size: 13px; color: var(--text-muted); }
 
 .quote-card {
   text-align: center;
@@ -244,6 +250,11 @@ main { padding: 16px; max-width: 640px; margin: 0 auto; }
   color: #fff;
   font-weight: 700;
 }
+.cal-day.recover {
+  background: color-mix(in srgb, #9085e9 22%, var(--surface-1));
+  color: var(--text-secondary);
+  font-weight: 600;
+}
 .cal-day.today {
   outline: 2px solid var(--series-1);
   outline-offset: 1px;
@@ -286,11 +297,17 @@ main { padding: 16px; max-width: 640px; margin: 0 auto; }
 /* ===== 紀錄列表 ===== */
 .date-group { margin-bottom: 20px; }
 .date-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 4px 8px;
+}
+.date-heading h3 {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-muted);
-  margin: 0 4px 8px;
 }
+.date-heading span { font-size: 12px; color: var(--text-muted); }
 .record-card {
   display: flex;
   align-items: center;
@@ -317,9 +334,36 @@ main { padding: 16px; max-width: 640px; margin: 0 auto; }
 .record-main { flex: 1; min-width: 0; }
 .record-type { font-weight: 600; font-size: 15px; }
 .record-meta {
-  font-size: 13px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+.meta-pill {
+  font-size: 12px;
   color: var(--text-secondary);
-  margin-top: 2px;
+  background: var(--page);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.tag-recover {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6a5acd;
+  background: color-mix(in srgb, #9085e9 18%, var(--surface-1));
+  border-radius: 999px;
+  padding: 2px 8px;
+  vertical-align: 1px;
+}
+@media (prefers-color-scheme: dark) {
+  .tag-recover { color: #b3aaf5; }
+}
+.record-card.recover .record-emoji {
+  background: color-mix(in srgb, #9085e9 16%, var(--surface-1));
 }
 .record-note {
   font-size: 13px;
@@ -546,7 +590,13 @@ main { padding: 16px; max-width: 640px; margin: 0 auto; }
 .field-row { display: flex; gap: 12px; }
 
 /* 運動類型複選 chips */
-.type-picker {
+.type-group-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 8px 2px 6px;
+}
+.type-group-label:first-child { margin-top: 0; }
+.type-group {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;

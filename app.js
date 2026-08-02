@@ -5,22 +5,27 @@
   const STORAGE_KEY = 'fitness-records-v1';
   const GOAL_KEY = 'fitness-goal-v1';
 
+  // cat: 'main' = 運動（計入目標/連續天數）, 'recover' = 伸展恢復（單獨統計）
   const SPORT_TYPES = [
-    { name: '跑步', emoji: '🏃' },
-    { name: '健走', emoji: '🚶' },
-    { name: '自行車', emoji: '🚴' },
-    { name: '游泳', emoji: '🏊' },
-    { name: '重訓', emoji: '🏋️' },
-    { name: '核心', emoji: '🎯' },
-    { name: '腹部', emoji: '🤸' },
-    { name: '臀腿', emoji: '🦵' },
-    { name: '拉伸', emoji: '🙆' },
-    { name: '瑜珈', emoji: '🧘' },
-    { name: '籃球', emoji: '⛹️' },
-    { name: '羽球', emoji: '🏸' },
-    { name: '登山健行', emoji: '🥾' },
-    { name: '其他', emoji: '💪' },
+    { name: '跑步', emoji: '🏃', cat: 'main' },
+    { name: '健走', emoji: '🚶', cat: 'main' },
+    { name: '自行車', emoji: '🚴', cat: 'main' },
+    { name: '游泳', emoji: '🏊', cat: 'main' },
+    { name: '重訓', emoji: '🏋️', cat: 'main' },
+    { name: '核心', emoji: '🎯', cat: 'main' },
+    { name: '腹部', emoji: '🤸', cat: 'main' },
+    { name: '臀腿', emoji: '🦵', cat: 'main' },
+    { name: '瑜珈', emoji: '🧘', cat: 'main' },
+    { name: '籃球', emoji: '⛹️', cat: 'main' },
+    { name: '羽球', emoji: '🏸', cat: 'main' },
+    { name: '登山健行', emoji: '🥾', cat: 'main' },
+    { name: '其他', emoji: '💪', cat: 'main' },
+    { name: '拉伸', emoji: '🙆', cat: 'recover' },
   ];
+  const isRecoveryType = (t) =>
+    (SPORT_TYPES.find((x) => x.name === t) || {}).cat === 'recover';
+  // 至少含一種「運動」類型才算一次運動；純拉伸為恢復紀錄
+  const isWorkout = (r) => (r.types || []).some((t) => !isRecoveryType(t));
   const emojiOf = (type) =>
     (SPORT_TYPES.find((t) => t.name === type) || { emoji: '💪' }).emoji;
   const INTENSITY_EMOJI = { 輕鬆: '😌', 適中: '🙂', 激烈: '🥵' };
@@ -113,7 +118,7 @@
   function weekCount() {
     const ws = weekStart();
     const t = todayStr();
-    return records.filter((r) => r.date >= ws && r.date <= t).length;
+    return records.filter((r) => isWorkout(r) && r.date >= ws && r.date <= t).length;
   }
 
   const RING_CIRC = 2 * Math.PI * 52;
@@ -146,22 +151,27 @@
     ringFill.style.strokeDashoffset = RING_CIRC * (1 - pct);
     ringFill.classList.toggle('done', count >= goal);
 
-    // 快速數據
+    // 快速數據（只算運動）
     const ws = weekStart();
     const t = todayStr();
-    const weekRecords = records.filter((r) => r.date >= ws && r.date <= t);
+    const weekWorkouts = records.filter(
+      (r) => isWorkout(r) && r.date >= ws && r.date <= t
+    );
     document.getElementById('home-streak').textContent = streak();
     document.getElementById('home-week-min').textContent =
-      weekRecords.reduce((s, r) => s + r.minutes, 0);
+      weekWorkouts.reduce((s, r) => s + r.minutes, 0);
 
     // 打氣語
     const cheer = document.getElementById('cheer-line');
     const s = streak();
-    const hasToday = records.some((r) => r.date === t);
+    const hasWorkoutToday = records.some((r) => isWorkout(r) && r.date === t);
+    const hasStretchToday = records.some((r) => !isWorkout(r) && r.date === t);
     if (count >= goal) {
       cheer.textContent = '本週目標達成，你超棒的！🏆✨';
-    } else if (hasToday) {
+    } else if (hasWorkoutToday) {
       cheer.textContent = `今天已打卡！連續 ${s} 天，繼續保持 🔥`;
+    } else if (hasStretchToday) {
+      cheer.textContent = '今天做了伸展，很好的照顧自己 🧘 要不要再動一下？';
     } else if (s > 0) {
       cheer.textContent = `已連續 ${s} 天，今天動一下就不中斷囉 🔥`;
     } else if (count > 0) {
@@ -180,7 +190,10 @@
     strip.innerHTML = '';
     const ws = weekStart();
     const t = todayStr();
-    const workoutDays = new Set(records.map((r) => r.date));
+    const workoutDays = new Set(records.filter(isWorkout).map((r) => r.date));
+    const recoverDays = new Set(
+      records.filter((r) => !isWorkout(r)).map((r) => r.date)
+    );
     const labels = ['一', '二', '三', '四', '五', '六', '日'];
     for (let i = 0; i < 7; i++) {
       const dateStr = addDays(ws, i);
@@ -191,6 +204,9 @@
       if (workoutDays.has(dateStr)) {
         dot.classList.add('done');
         dot.textContent = '✓';
+      } else if (recoverDays.has(dateStr)) {
+        dot.classList.add('recover');
+        dot.textContent = '🧘';
       }
       if (dateStr === t) dot.classList.add('today');
       if (dateStr > t) dot.classList.add('future');
@@ -219,16 +235,28 @@
       box.appendChild(btn);
       return;
     }
-    const total = todays.reduce((s, r) => s + r.minutes, 0);
+    const workouts = todays.filter(isWorkout);
+    const stretches = todays.filter((r) => !isWorkout(r));
     const types = [...new Set(todays.flatMap((r) => r.types || []))];
-    const p = document.createElement('p');
-    p.className = 'today-done';
-    p.textContent = `已完成 ${total} 分鐘：${types.join('、')}`;
     const emojis = document.createElement('p');
     emojis.className = 'today-emojis';
     emojis.textContent = types.map(emojiOf).join(' ') + ' 🎉';
     box.appendChild(emojis);
-    box.appendChild(p);
+    if (workouts.length) {
+      const p = document.createElement('p');
+      p.className = 'today-done';
+      const wTypes = [...new Set(workouts.flatMap((r) => r.types || []))]
+        .filter((t) => !isRecoveryType(t));
+      p.textContent =
+        `運動 ${workouts.reduce((s, r) => s + r.minutes, 0)} 分鐘：${wTypes.join('、')}`;
+      box.appendChild(p);
+    }
+    if (stretches.length) {
+      const p = document.createElement('p');
+      p.className = 'today-done today-recover';
+      p.textContent = `伸展 ${stretches.reduce((s, r) => s + r.minutes, 0)} 分鐘 🧘`;
+      box.appendChild(p);
+    }
   }
 
   /* ---------- 紀錄列表 ---------- */
@@ -250,20 +278,26 @@
     for (const [date, items] of byDate) {
       const group = document.createElement('div');
       group.className = 'date-group';
-      const heading = document.createElement('h3');
+      const heading = document.createElement('div');
       heading.className = 'date-heading';
-      heading.textContent = dateLabel(date);
+      const dayTotal = items.reduce((s, r) => s + r.minutes, 0);
+      const title = document.createElement('h3');
+      title.textContent = dateLabel(date);
+      const sub = document.createElement('span');
+      sub.textContent = `共 ${dayTotal} 分鐘`;
+      heading.appendChild(title);
+      heading.appendChild(sub);
       group.appendChild(heading);
 
       for (const r of items) {
         const types = r.types || ['其他'];
-        const meta = [`${r.minutes} 分鐘`];
-        if (r.distance) meta.push(`${r.distance} 公里`);
-        if (r.calories) meta.push(`${r.calories} 大卡`);
+        const meta = [`⏱️ ${r.minutes} 分`];
+        if (r.distance) meta.push(`🗺️ ${r.distance} km`);
+        if (r.calories) meta.push(`🔥 ${r.calories} 大卡`);
         if (r.intensity) meta.push(`${INTENSITY_EMOJI[r.intensity] || ''} ${r.intensity}`.trim());
 
         const card = document.createElement('div');
-        card.className = 'record-card';
+        card.className = 'record-card' + (isWorkout(r) ? '' : ' recover');
         card.innerHTML = `
           <span class="record-emoji"></span>
           <div class="record-main">
@@ -276,8 +310,21 @@
             <button class="icon-btn" data-act="del" aria-label="刪除">🗑️</button>
           </div>`;
         card.querySelector('.record-emoji').textContent = emojiOf(types[0]);
-        card.querySelector('.record-type').textContent = types.join('、');
-        card.querySelector('.record-meta').textContent = meta.join(' · ');
+        const typeEl = card.querySelector('.record-type');
+        typeEl.textContent = types.join('、');
+        if (!isWorkout(r)) {
+          const tag = document.createElement('span');
+          tag.className = 'tag-recover';
+          tag.textContent = '恢復';
+          typeEl.appendChild(tag);
+        }
+        const metaEl = card.querySelector('.record-meta');
+        meta.forEach((m) => {
+          const pill = document.createElement('span');
+          pill.className = 'meta-pill';
+          pill.textContent = m;
+          metaEl.appendChild(pill);
+        });
         if (r.note) {
           const noteEl = card.querySelector('.record-note');
           noteEl.textContent = r.note;
@@ -306,17 +353,29 @@
   let editingId = null;
 
   const typePicker = document.getElementById('type-picker');
-  SPORT_TYPES.forEach((t) => {
-    const chip = document.createElement('label');
-    chip.className = 'type-chip';
-    const box = document.createElement('input');
-    box.type = 'checkbox';
-    box.value = t.name;
-    const text = document.createElement('span');
-    text.textContent = `${t.emoji} ${t.name}`;
-    chip.appendChild(box);
-    chip.appendChild(text);
-    typePicker.appendChild(chip);
+  [
+    { label: '運動（計入目標與連續天數）', cat: 'main' },
+    { label: '伸展・恢復（單獨統計，不算次數）', cat: 'recover' },
+  ].forEach((g) => {
+    const groupLabel = document.createElement('div');
+    groupLabel.className = 'type-group-label';
+    groupLabel.textContent = g.label;
+    typePicker.appendChild(groupLabel);
+    const row = document.createElement('div');
+    row.className = 'type-group';
+    SPORT_TYPES.filter((t) => t.cat === g.cat).forEach((t) => {
+      const chip = document.createElement('label');
+      chip.className = 'type-chip';
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.value = t.name;
+      const text = document.createElement('span');
+      text.textContent = `${t.emoji} ${t.name}`;
+      chip.appendChild(box);
+      chip.appendChild(text);
+      row.appendChild(chip);
+    });
+    typePicker.appendChild(row);
   });
   const typeBoxes = () => [...typePicker.querySelectorAll('input[type="checkbox"]')];
 
@@ -387,7 +446,9 @@
   /* ---------- 統計 ---------- */
   function renderStats() {
     const ws = weekStart();
-    const weekRecords = records.filter((r) => r.date >= ws && r.date <= todayStr());
+    const weekRecords = records.filter(
+      (r) => isWorkout(r) && r.date >= ws && r.date <= todayStr()
+    );
     document.getElementById('stat-week-count').textContent = weekRecords.length;
     document.getElementById('stat-week-minutes').textContent =
       weekRecords.reduce((s, r) => s + r.minutes, 0);
@@ -413,7 +474,10 @@
     document.getElementById('cal-title').textContent =
       `📅 ${calMonth.getFullYear()} 年 ${calMonth.getMonth() + 1} 月`;
 
-    const workoutDays = new Set(records.map((r) => r.date));
+    const workoutDays = new Set(records.filter(isWorkout).map((r) => r.date));
+    const recoverDays = new Set(
+      records.filter((r) => !isWorkout(r)).map((r) => r.date)
+    );
     const t = todayStr();
 
     ['一', '二', '三', '四', '五', '六', '日'].forEach((w) => {
@@ -435,6 +499,7 @@
       cell.className = 'cal-day';
       cell.textContent = day;
       if (workoutDays.has(dateStr)) cell.classList.add('workout');
+      else if (recoverDays.has(dateStr)) cell.classList.add('recover');
       if (dateStr === t) cell.classList.add('today');
       if (dateStr > t) cell.classList.add('future');
       cal.appendChild(cell);
@@ -463,7 +528,7 @@
   ];
 
   function maxStreak() {
-    const days = [...new Set(records.map((r) => r.date))].sort();
+    const days = [...new Set(records.filter(isWorkout).map((r) => r.date))].sort();
     let best = 0;
     let run = 0;
     let prev = null;
@@ -476,9 +541,10 @@
   }
 
   function renderBadges() {
+    const workouts = records.filter(isWorkout);
     const stats = {
-      totalCount: records.length,
-      totalMinutes: records.reduce((s, r) => s + r.minutes, 0),
+      totalCount: workouts.length,
+      totalMinutes: workouts.reduce((s, r) => s + r.minutes, 0),
       maxStreak: maxStreak(),
     };
     const box = document.getElementById('badges');
@@ -495,9 +561,9 @@
     });
   }
 
-  // 連續運動天數（含今天或到昨天為止）
+  // 連續運動天數（含今天或到昨天為止；只算運動，不含純拉伸）
   function streak() {
-    const days = new Set(records.map((r) => r.date));
+    const days = new Set(records.filter(isWorkout).map((r) => r.date));
     let d = todayStr();
     if (!days.has(d)) d = addDays(d, -1);
     let count = 0;
@@ -515,7 +581,7 @@
     for (let i = 6; i >= 0; i--) {
       const date = addDays(todayStr(), -i);
       const minutes = records
-        .filter((r) => r.date === date)
+        .filter((r) => isWorkout(r) && r.date === date)
         .reduce((s, r) => s + r.minutes, 0);
       const d = new Date(date + 'T00:00:00');
       days.push({ date, minutes, label: i === 0 ? '今天' : `${d.getMonth() + 1}/${d.getDate()}` });

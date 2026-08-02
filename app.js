@@ -90,30 +90,74 @@
       tabs.forEach((t) => t.classList.toggle('active', t === tab));
       pages.forEach((p) => p.classList.toggle('active', p.id === tab.dataset.page));
       document.getElementById('fab').classList
-        .toggle('hidden', tab.dataset.page !== 'page-records');
+        .toggle('hidden', !['page-home', 'page-records'].includes(tab.dataset.page));
       if (tab.dataset.page === 'page-stats') renderStats();
+      if (tab.dataset.page === 'page-home') renderHome();
     });
   });
 
-  /* ---------- 每週目標卡 ---------- */
+  /* ---------- 首頁 ---------- */
+  const QUOTES = [
+    '運動是給自己最好的禮物 🎁',
+    '慢慢來，比較快 🐢',
+    '流的汗不會背叛你 💦',
+    '今天的你比昨天更強 💪',
+    '動起來，煩惱就少一點 ☁️',
+    '不必完美，只要開始 ✨',
+    '身體會記得你的努力 🌟',
+    '休息也是訓練的一部分 😌',
+    '小步前進也是前進 👣',
+    '你值得一個健康的自己 💖',
+  ];
+
   function weekCount() {
     const ws = weekStart();
     const t = todayStr();
     return records.filter((r) => r.date >= ws && r.date <= t).length;
   }
 
-  function renderGoalCard() {
+  const RING_CIRC = 2 * Math.PI * 52;
+
+  function renderHome() {
+    // 問候語（依時段）
+    const hour = new Date().getHours();
+    const greet =
+      hour < 5 ? '夜貓子好 🌙' :
+      hour < 11 ? '早安 ☀️' :
+      hour < 14 ? '午安 🌤️' :
+      hour < 18 ? '下午好 🌇' : '晚安 🌙';
+    document.getElementById('hero-greet').textContent = greet;
+
+    // 每日金句（依日期固定）
+    const d = new Date();
+    const qi = (d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate()) % QUOTES.length;
+    document.getElementById('hero-slogan').textContent = QUOTES[qi];
+    document.getElementById('daily-quote').textContent =
+      QUOTES[(qi + 3) % QUOTES.length];
+
+    // 目標進度環
     const goal = loadGoal();
     const count = weekCount();
-    document.getElementById('goal-progress-text').textContent = `${count} / ${goal} 次`;
-    const fill = document.getElementById('goal-bar-fill');
-    fill.style.width = `${Math.min(100, (count / goal) * 100)}%`;
-    fill.classList.toggle('done', count >= goal);
+    const pct = Math.min(1, count / goal);
+    document.getElementById('ring-count').textContent = count;
+    document.getElementById('ring-goal').textContent = `/ ${goal} 次`;
+    const ringFill = document.getElementById('ring-fill');
+    ringFill.style.strokeDasharray = RING_CIRC;
+    ringFill.style.strokeDashoffset = RING_CIRC * (1 - pct);
+    ringFill.classList.toggle('done', count >= goal);
 
-    // 依狀態顯示打氣語
+    // 快速數據
+    const ws = weekStart();
+    const t = todayStr();
+    const weekRecords = records.filter((r) => r.date >= ws && r.date <= t);
+    document.getElementById('home-streak').textContent = streak();
+    document.getElementById('home-week-min').textContent =
+      weekRecords.reduce((s, r) => s + r.minutes, 0);
+
+    // 打氣語
     const cheer = document.getElementById('cheer-line');
     const s = streak();
-    const hasToday = records.some((r) => r.date === todayStr());
+    const hasToday = records.some((r) => r.date === t);
     if (count >= goal) {
       cheer.textContent = '本週目標達成，你超棒的！🏆✨';
     } else if (hasToday) {
@@ -125,6 +169,66 @@
     } else {
       cheer.textContent = '新的一週，從一個小小的開始就好 🌱';
     }
+
+    renderWeekStrip();
+    renderTodaySummary();
+  }
+
+  // 本週打卡點點（週一～週日）
+  function renderWeekStrip() {
+    const strip = document.getElementById('week-strip');
+    strip.innerHTML = '';
+    const ws = weekStart();
+    const t = todayStr();
+    const workoutDays = new Set(records.map((r) => r.date));
+    const labels = ['一', '二', '三', '四', '五', '六', '日'];
+    for (let i = 0; i < 7; i++) {
+      const dateStr = addDays(ws, i);
+      const item = document.createElement('div');
+      item.className = 'strip-day';
+      const dot = document.createElement('div');
+      dot.className = 'strip-dot';
+      if (workoutDays.has(dateStr)) {
+        dot.classList.add('done');
+        dot.textContent = '✓';
+      }
+      if (dateStr === t) dot.classList.add('today');
+      if (dateStr > t) dot.classList.add('future');
+      const label = document.createElement('span');
+      label.textContent = labels[i];
+      item.appendChild(dot);
+      item.appendChild(label);
+      strip.appendChild(item);
+    }
+  }
+
+  // 今日狀態
+  function renderTodaySummary() {
+    const box = document.getElementById('today-summary');
+    box.innerHTML = '';
+    const todays = records.filter((r) => r.date === todayStr());
+    if (todays.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'today-empty';
+      p.textContent = '今天還沒有紀錄，動一下吧！';
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-primary';
+      btn.textContent = '＋ 記錄今天的運動';
+      btn.addEventListener('click', () => openForm(null));
+      box.appendChild(p);
+      box.appendChild(btn);
+      return;
+    }
+    const total = todays.reduce((s, r) => s + r.minutes, 0);
+    const types = [...new Set(todays.flatMap((r) => r.types || []))];
+    const p = document.createElement('p');
+    p.className = 'today-done';
+    p.textContent = `已完成 ${total} 分鐘：${types.join('、')}`;
+    const emojis = document.createElement('p');
+    emojis.className = 'today-emojis';
+    emojis.textContent = types.map(emojiOf).join(' ') + ' 🎉';
+    box.appendChild(emojis);
+    box.appendChild(p);
   }
 
   /* ---------- 紀錄列表 ---------- */
@@ -192,7 +296,7 @@
       }
       listEl.appendChild(group);
     }
-    renderGoalCard();
+    renderHome();
   }
 
   /* ---------- 表單 ---------- */
@@ -648,7 +752,7 @@
       return;
     }
     saveGoal(n);
-    renderGoalCard();
+    renderHome();
     toast('目標已更新 🎯 加油！');
   });
 

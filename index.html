@@ -17,16 +17,51 @@
   </header>
 
   <main>
-    <!-- 紀錄頁 -->
-    <section id="page-records" class="page active">
-      <div class="goal-card">
-        <div class="goal-info">
-          <span class="goal-title">🎯 本週目標</span>
-          <span id="goal-progress-text" class="goal-progress-text">0 / 3 次</span>
+    <!-- 首頁 -->
+    <section id="page-home" class="page active">
+      <div class="hero">
+        <p id="hero-greet" class="hero-greet">早安 ☀️</p>
+        <h2 id="hero-slogan" class="hero-slogan">今天也為自己動起來</h2>
+        <div class="hero-main">
+          <div class="ring-wrap">
+            <svg viewBox="0 0 120 120" class="ring">
+              <circle class="ring-track" cx="60" cy="60" r="52"></circle>
+              <circle id="ring-fill" class="ring-fill" cx="60" cy="60" r="52"></circle>
+            </svg>
+            <div class="ring-center">
+              <span id="ring-count" class="ring-count">0</span>
+              <span id="ring-goal" class="ring-goal">/ 3 次</span>
+            </div>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat">
+              <b id="home-streak">0</b>
+              <span>🔥 連續天數</span>
+            </div>
+            <div class="hero-stat">
+              <b id="home-week-min">0</b>
+              <span>⏱️ 本週分鐘</span>
+            </div>
+          </div>
         </div>
-        <div class="goal-bar"><div id="goal-bar-fill" class="goal-bar-fill"></div></div>
         <p id="cheer-line" class="cheer-line"></p>
       </div>
+
+      <div class="home-card">
+        <h3 class="home-card-title">📆 本週打卡</h3>
+        <div id="week-strip" class="week-strip"></div>
+      </div>
+
+      <div class="home-card">
+        <h3 class="home-card-title">🌟 今日狀態</h3>
+        <div id="today-summary" class="today-summary"></div>
+      </div>
+
+      <p class="quote-card"><span id="daily-quote"></span></p>
+    </section>
+
+    <!-- 紀錄頁 -->
+    <section id="page-records" class="page">
       <div id="record-list" class="record-list"></div>
       <p id="empty-hint" class="empty-hint hidden">
         <span class="empty-emoji">🐣</span>
@@ -121,7 +156,10 @@
 
   <!-- 底部分頁列 -->
   <nav class="tab-bar">
-    <button class="tab active" data-page="page-records">
+    <button class="tab active" data-page="page-home">
+      <span class="tab-icon">🏠</span>首頁
+    </button>
+    <button class="tab" data-page="page-records">
       <span class="tab-icon">📋</span>紀錄
     </button>
     <button class="tab" data-page="page-stats">

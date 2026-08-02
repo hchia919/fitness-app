@@ -324,6 +324,37 @@ main { padding: 16px; max-width: 640px; margin: 0 auto; }
 }
 .field-row { display: flex; gap: 12px; }
 
+/* 運動類型複選 chips */
+.type-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-1);
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+.type-chip input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--series-1);
+  cursor: pointer;
+}
+.type-chip:has(input:checked) {
+  border-color: var(--series-1);
+  background: color-mix(in srgb, var(--series-1) 12%, var(--surface-1));
+  font-weight: 600;
+}
+
 .modal-actions {
   display: flex;
   gap: 10px;

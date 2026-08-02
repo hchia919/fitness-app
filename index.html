@@ -19,6 +19,14 @@
   <main>
     <!-- 紀錄頁 -->
     <section id="page-records" class="page active">
+      <div class="goal-card">
+        <div class="goal-info">
+          <span class="goal-title">🎯 本週目標</span>
+          <span id="goal-progress-text" class="goal-progress-text">0 / 3 次</span>
+        </div>
+        <div class="goal-bar"><div id="goal-bar-fill" class="goal-bar-fill"></div></div>
+        <p id="cheer-line" class="cheer-line"></p>
+      </div>
       <div id="record-list" class="record-list"></div>
       <p id="empty-hint" class="empty-hint hidden">
         <span class="empty-emoji">🐣</span>
@@ -51,6 +59,22 @@
         </div>
       </div>
 
+      <div class="chart-card">
+        <div class="cal-head">
+          <h2 id="cal-title">📅 打卡月曆</h2>
+          <div class="cal-nav">
+            <button id="cal-prev" class="cal-btn" aria-label="上個月">‹</button>
+            <button id="cal-next" class="cal-btn" aria-label="下個月">›</button>
+          </div>
+        </div>
+        <div id="calendar" class="calendar"></div>
+      </div>
+
+      <div class="chart-card">
+        <h2>🎖️ 成就徽章</h2>
+        <div id="badges" class="badges"></div>
+      </div>
+
       <div class="chart-card viz-root">
         <h2>📈 近 7 天運動時間<span class="chart-sub">分鐘</span></h2>
         <div id="chart-week" class="chart"></div>
@@ -64,6 +88,14 @@
 
     <!-- 設定頁 -->
     <section id="page-settings" class="page">
+      <div class="settings-card">
+        <h2>🎯 每週目標</h2>
+        <p class="settings-desc">每週想運動幾次？設一個做得到的小目標，慢慢養成習慣。</p>
+        <div class="settings-actions">
+          <input id="goal-input" class="goal-input" type="number" min="1" max="14" value="3">
+          <button id="btn-save-goal" class="btn btn-primary">儲存目標</button>
+        </div>
+      </div>
       <div class="settings-card">
         <h2>💾 資料備份</h2>
         <p class="settings-desc">所有紀錄都只儲存在這台裝置上，建議定期匯出備份。</p>

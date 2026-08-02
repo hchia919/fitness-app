@@ -3,6 +3,7 @@
   'use strict';
 
   const STORAGE_KEY = 'fitness-records-v1';
+  const GOAL_KEY = 'fitness-goal-v1';
 
   const SPORT_TYPES = [
     { name: '跑步', emoji: '🏃' },
@@ -47,6 +48,14 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
   }
 
+  function loadGoal() {
+    const n = Number(localStorage.getItem(GOAL_KEY));
+    return n >= 1 && n <= 14 ? n : 3;
+  }
+  function saveGoal(n) {
+    localStorage.setItem(GOAL_KEY, String(n));
+  }
+
   /* ---------- 日期工具 ---------- */
   const pad = (n) => String(n).padStart(2, '0');
   const fmtDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -85,6 +94,38 @@
       if (tab.dataset.page === 'page-stats') renderStats();
     });
   });
+
+  /* ---------- 每週目標卡 ---------- */
+  function weekCount() {
+    const ws = weekStart();
+    const t = todayStr();
+    return records.filter((r) => r.date >= ws && r.date <= t).length;
+  }
+
+  function renderGoalCard() {
+    const goal = loadGoal();
+    const count = weekCount();
+    document.getElementById('goal-progress-text').textContent = `${count} / ${goal} 次`;
+    const fill = document.getElementById('goal-bar-fill');
+    fill.style.width = `${Math.min(100, (count / goal) * 100)}%`;
+    fill.classList.toggle('done', count >= goal);
+
+    // 依狀態顯示打氣語
+    const cheer = document.getElementById('cheer-line');
+    const s = streak();
+    const hasToday = records.some((r) => r.date === todayStr());
+    if (count >= goal) {
+      cheer.textContent = '本週目標達成，你超棒的！🏆✨';
+    } else if (hasToday) {
+      cheer.textContent = `今天已打卡！連續 ${s} 天，繼續保持 🔥`;
+    } else if (s > 0) {
+      cheer.textContent = `已連續 ${s} 天，今天動一下就不中斷囉 🔥`;
+    } else if (count > 0) {
+      cheer.textContent = `本週還差 ${goal - count} 次，找個喜歡的運動吧 🌱`;
+    } else {
+      cheer.textContent = '新的一週，從一個小小的開始就好 🌱';
+    }
+  }
 
   /* ---------- 紀錄列表 ---------- */
   const listEl = document.getElementById('record-list');
@@ -151,6 +192,7 @@
       }
       listEl.appendChild(group);
     }
+    renderGoalCard();
   }
 
   /* ---------- 表單 ---------- */
@@ -224,8 +266,14 @@
       if (idx >= 0) records[idx] = { ...records[idx], ...data };
       toast('已更新 ✅');
     } else {
+      const before = weekCount();
       records.push({ id: Date.now(), ...data });
-      toast(praise());
+      const goal = loadGoal();
+      if (before < goal && weekCount() >= goal) {
+        toast('🎉 本週目標達成！你太強了！🏆');
+      } else {
+        toast(praise());
+      }
     }
     save();
     closeForm();
@@ -245,6 +293,102 @@
 
     renderWeekChart();
     renderTypeChart();
+    renderCalendar();
+    renderBadges();
+  }
+
+  /* ---- 打卡月曆 ---- */
+  let calMonth = (() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  })();
+
+  function renderCalendar() {
+    const cal = document.getElementById('calendar');
+    cal.innerHTML = '';
+    document.getElementById('cal-title').textContent =
+      `📅 ${calMonth.getFullYear()} 年 ${calMonth.getMonth() + 1} 月`;
+
+    const workoutDays = new Set(records.map((r) => r.date));
+    const t = todayStr();
+
+    ['一', '二', '三', '四', '五', '六', '日'].forEach((w) => {
+      const head = document.createElement('div');
+      head.className = 'cal-weekday';
+      head.textContent = w;
+      cal.appendChild(head);
+    });
+
+    const first = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+    const daysInMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0).getDate();
+    const offset = (first.getDay() + 6) % 7; // 週一開頭
+    for (let i = 0; i < offset; i++) {
+      cal.appendChild(document.createElement('div'));
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = fmtDate(new Date(calMonth.getFullYear(), calMonth.getMonth(), day));
+      const cell = document.createElement('div');
+      cell.className = 'cal-day';
+      cell.textContent = day;
+      if (workoutDays.has(dateStr)) cell.classList.add('workout');
+      if (dateStr === t) cell.classList.add('today');
+      if (dateStr > t) cell.classList.add('future');
+      cal.appendChild(cell);
+    }
+  }
+
+  document.getElementById('cal-prev').addEventListener('click', () => {
+    calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1);
+    renderCalendar();
+  });
+  document.getElementById('cal-next').addEventListener('click', () => {
+    calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1);
+    renderCalendar();
+  });
+
+  /* ---- 成就徽章 ---- */
+  const BADGES = [
+    { emoji: '🐣', name: '第一步', desc: '完成第 1 筆紀錄', earned: (s) => s.totalCount >= 1 },
+    { emoji: '🔥', name: '連續 3 天', desc: '連續運動 3 天', earned: (s) => s.maxStreak >= 3 },
+    { emoji: '⚡', name: '連續 7 天', desc: '連續運動 7 天', earned: (s) => s.maxStreak >= 7 },
+    { emoji: '🌈', name: '連續 14 天', desc: '連續運動 14 天', earned: (s) => s.maxStreak >= 14 },
+    { emoji: '🏅', name: '10 次達成', desc: '累積 10 筆紀錄', earned: (s) => s.totalCount >= 10 },
+    { emoji: '💎', name: '50 次達成', desc: '累積 50 筆紀錄', earned: (s) => s.totalCount >= 50 },
+    { emoji: '⏰', name: '500 分鐘', desc: '累積運動 500 分鐘', earned: (s) => s.totalMinutes >= 500 },
+    { emoji: '👑', name: '2000 分鐘', desc: '累積運動 2000 分鐘', earned: (s) => s.totalMinutes >= 2000 },
+  ];
+
+  function maxStreak() {
+    const days = [...new Set(records.map((r) => r.date))].sort();
+    let best = 0;
+    let run = 0;
+    let prev = null;
+    for (const d of days) {
+      run = prev && addDays(prev, 1) === d ? run + 1 : 1;
+      best = Math.max(best, run);
+      prev = d;
+    }
+    return best;
+  }
+
+  function renderBadges() {
+    const stats = {
+      totalCount: records.length,
+      totalMinutes: records.reduce((s, r) => s + r.minutes, 0),
+      maxStreak: maxStreak(),
+    };
+    const box = document.getElementById('badges');
+    box.innerHTML = '';
+    BADGES.forEach((b) => {
+      const earned = b.earned(stats);
+      const tile = document.createElement('div');
+      tile.className = 'badge' + (earned ? '' : ' locked');
+      tile.title = b.desc;
+      tile.innerHTML = '<span class="badge-emoji"></span><span class="badge-name"></span>';
+      tile.querySelector('.badge-emoji').textContent = earned ? b.emoji : '🔒';
+      tile.querySelector('.badge-name').textContent = b.name;
+      box.appendChild(tile);
+    });
   }
 
   // 連續運動天數（含今天或到昨天為止）
@@ -493,6 +637,20 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => el.classList.add('hidden'), 2000);
   }
+
+  /* ---------- 每週目標設定 ---------- */
+  const goalInput = document.getElementById('goal-input');
+  goalInput.value = loadGoal();
+  document.getElementById('btn-save-goal').addEventListener('click', () => {
+    const n = Number(goalInput.value);
+    if (!(n >= 1 && n <= 14)) {
+      toast('目標請設定 1～14 次 🙏');
+      return;
+    }
+    saveGoal(n);
+    renderGoalCard();
+    toast('目標已更新 🎯 加油！');
+  });
 
   /* ---------- 初始化 ---------- */
   document.getElementById('today-label').textContent = dateLabel(todayStr());

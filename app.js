@@ -10,6 +10,7 @@
     { name: '自行車', emoji: '🚴' },
     { name: '游泳', emoji: '🏊' },
     { name: '重訓', emoji: '🏋️' },
+    { name: '核心', emoji: '🎯' },
     { name: '腹部', emoji: '🤸' },
     { name: '臀腿', emoji: '🦵' },
     { name: '拉伸', emoji: '🙆' },
@@ -32,7 +33,12 @@
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const data = raw ? JSON.parse(raw) : [];
-      return Array.isArray(data) ? data : [];
+      if (!Array.isArray(data)) return [];
+      // 舊資料相容：單一 type 轉為 types 陣列
+      return data.map((r) => ({
+        ...r,
+        types: Array.isArray(r.types) && r.types.length ? r.types : r.type ? [r.type] : ['其他'],
+      }));
     } catch {
       return [];
     }
@@ -105,6 +111,7 @@
       group.appendChild(heading);
 
       for (const r of items) {
+        const types = r.types || ['其他'];
         const meta = [`${r.minutes} 分鐘`];
         if (r.distance) meta.push(`${r.distance} 公里`);
         if (r.calories) meta.push(`${r.calories} 大卡`);
@@ -123,8 +130,8 @@
             <button class="icon-btn" data-act="edit" aria-label="編輯">✏️</button>
             <button class="icon-btn" data-act="del" aria-label="刪除">🗑️</button>
           </div>`;
-        card.querySelector('.record-emoji').textContent = emojiOf(r.type);
-        card.querySelector('.record-type').textContent = r.type;
+        card.querySelector('.record-emoji').textContent = emojiOf(types[0]);
+        card.querySelector('.record-type').textContent = types.join('、');
         card.querySelector('.record-meta').textContent = meta.join(' · ');
         if (r.note) {
           const noteEl = card.querySelector('.record-note');
@@ -133,7 +140,7 @@
         }
         card.querySelector('[data-act="edit"]').addEventListener('click', () => openForm(r));
         card.querySelector('[data-act="del"]').addEventListener('click', () => {
-          if (confirm(`確定要刪除這筆「${r.type}」紀錄嗎？`)) {
+          if (confirm(`確定要刪除這筆「${types.join('、')}」紀錄嗎？`)) {
             records = records.filter((x) => x.id !== r.id);
             save();
             renderList();
@@ -152,21 +159,31 @@
   const formTitle = document.getElementById('form-title');
   let editingId = null;
 
-  const typeSelect = form.elements.type;
+  const typePicker = document.getElementById('type-picker');
   SPORT_TYPES.forEach((t) => {
-    const opt = document.createElement('option');
-    opt.value = t.name;
-    opt.textContent = `${t.emoji} ${t.name}`;
-    typeSelect.appendChild(opt);
+    const chip = document.createElement('label');
+    chip.className = 'type-chip';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.value = t.name;
+    const text = document.createElement('span');
+    text.textContent = `${t.emoji} ${t.name}`;
+    chip.appendChild(box);
+    chip.appendChild(text);
+    typePicker.appendChild(chip);
   });
+  const typeBoxes = () => [...typePicker.querySelectorAll('input[type="checkbox"]')];
 
   function openForm(record) {
     editingId = record ? record.id : null;
     formTitle.textContent = record ? '✏️ 編輯紀錄' : '✨ 新增紀錄';
     form.reset();
     form.elements.date.value = record ? record.date : todayStr();
+    const selected = record ? record.types || [] : [];
+    typeBoxes().forEach((box) => {
+      box.checked = selected.includes(box.value);
+    });
     if (record) {
-      form.elements.type.value = record.type;
       form.elements.minutes.value = record.minutes;
       form.elements.distance.value = record.distance ?? '';
       form.elements.calories.value = record.calories ?? '';
@@ -188,9 +205,14 @@
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const f = form.elements;
+    const types = typeBoxes().filter((b) => b.checked).map((b) => b.value);
+    if (types.length === 0) {
+      toast('請至少勾選一種運動類型 🙏');
+      return;
+    }
     const data = {
       date: f.date.value,
-      type: f.type.value,
+      types,
       minutes: Number(f.minutes.value),
       distance: f.distance.value ? Number(f.distance.value) : null,
       calories: f.calories.value ? Number(f.calories.value) : null,
@@ -264,7 +286,9 @@
     const totals = new Map();
     records
       .filter((r) => r.date >= since)
-      .forEach((r) => totals.set(r.type, (totals.get(r.type) || 0) + r.minutes));
+      .forEach((r) =>
+        (r.types || []).forEach((t) => totals.set(t, (totals.get(t) || 0) + r.minutes))
+      );
     const items = [...totals.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
@@ -426,13 +450,19 @@
       const data = JSON.parse(await file.text());
       if (!Array.isArray(data)) throw new Error();
       const valid = data.filter(
-        (r) => r && typeof r.date === 'string' && typeof r.type === 'string' && r.minutes > 0
+        (r) =>
+          r &&
+          typeof r.date === 'string' &&
+          (typeof r.type === 'string' || Array.isArray(r.types)) &&
+          r.minutes > 0
       );
       const existing = new Set(records.map((r) => r.id));
       let added = 0;
       valid.forEach((r) => {
         if (!existing.has(r.id)) {
-          records.push({ ...r, id: r.id ?? Date.now() + added });
+          const types =
+            Array.isArray(r.types) && r.types.length ? r.types : r.type ? [r.type] : ['其他'];
+          records.push({ ...r, types, id: r.id ?? Date.now() + added });
           added++;
         }
       });

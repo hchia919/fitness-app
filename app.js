@@ -15,6 +15,7 @@
     { name: '核心', emoji: '🎯', cat: 'main' },
     { name: '腹部', emoji: '🤸', cat: 'main' },
     { name: '臀腿', emoji: '🦵', cat: 'main' },
+    { name: '胸', emoji: '🎽', cat: 'main' },
     { name: '瑜珈', emoji: '🧘', cat: 'main' },
     { name: '籃球', emoji: '⛹️', cat: 'main' },
     { name: '羽球', emoji: '🏸', cat: 'main' },

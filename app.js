@@ -56,7 +56,7 @@
 
   function loadGoal() {
     const n = Number(localStorage.getItem(GOAL_KEY));
-    return n >= 1 && n <= 14 ? n : 3;
+    return n >= 1 && n <= 7 ? n : 3;
   }
   function saveGoal(n) {
     localStorage.setItem(GOAL_KEY, String(n));
@@ -116,10 +116,15 @@
     '你值得一個健康的自己 💖',
   ];
 
+  // 本週運動「天數」：同一天不論記幾筆都只算 1 次
   function weekCount() {
     const ws = weekStart();
     const t = todayStr();
-    return records.filter((r) => isWorkout(r) && r.date >= ws && r.date <= t).length;
+    return new Set(
+      records
+        .filter((r) => isWorkout(r) && r.date >= ws && r.date <= t)
+        .map((r) => r.date)
+    ).size;
   }
 
   const RING_CIRC = 2 * Math.PI * 52;
@@ -146,7 +151,7 @@
     const count = weekCount();
     const pct = Math.min(1, count / goal);
     document.getElementById('ring-count').textContent = count;
-    document.getElementById('ring-goal').textContent = `/ ${goal} 次`;
+    document.getElementById('ring-goal').textContent = `/ ${goal} 天`;
     const ringFill = document.getElementById('ring-fill');
     ringFill.style.strokeDasharray = RING_CIRC;
     ringFill.style.strokeDashoffset = RING_CIRC * (1 - pct);
@@ -176,7 +181,7 @@
     } else if (s > 0) {
       cheer.textContent = `已連續 ${s} 天，今天動一下就不中斷囉 🔥`;
     } else if (count > 0) {
-      cheer.textContent = `本週還差 ${goal - count} 次，找個喜歡的運動吧 🌱`;
+      cheer.textContent = `本週還差 ${goal - count} 天，找個喜歡的運動吧 🌱`;
     } else {
       cheer.textContent = '新的一週，從一個小小的開始就好 🌱';
     }
@@ -450,7 +455,9 @@
     const weekRecords = records.filter(
       (r) => isWorkout(r) && r.date >= ws && r.date <= todayStr()
     );
-    document.getElementById('stat-week-count').textContent = weekRecords.length;
+    document.getElementById('stat-week-count').textContent = new Set(
+      weekRecords.map((r) => r.date)
+    ).size;
     document.getElementById('stat-week-minutes').textContent =
       weekRecords.reduce((s, r) => s + r.minutes, 0);
     document.getElementById('stat-week-distance').textContent =
@@ -518,12 +525,12 @@
 
   /* ---- 成就徽章 ---- */
   const BADGES = [
-    { emoji: '🐣', name: '第一步', desc: '完成第 1 筆紀錄', earned: (s) => s.totalCount >= 1 },
+    { emoji: '🐣', name: '第一步', desc: '完成第 1 筆紀錄', earned: (s) => s.totalDays >= 1 },
     { emoji: '🔥', name: '連續 3 天', desc: '連續運動 3 天', earned: (s) => s.maxStreak >= 3 },
     { emoji: '⚡', name: '連續 7 天', desc: '連續運動 7 天', earned: (s) => s.maxStreak >= 7 },
     { emoji: '🌈', name: '連續 14 天', desc: '連續運動 14 天', earned: (s) => s.maxStreak >= 14 },
-    { emoji: '🏅', name: '10 次達成', desc: '累積 10 筆紀錄', earned: (s) => s.totalCount >= 10 },
-    { emoji: '💎', name: '50 次達成', desc: '累積 50 筆紀錄', earned: (s) => s.totalCount >= 50 },
+    { emoji: '🏅', name: '累積 10 天', desc: '累積運動 10 天', earned: (s) => s.totalDays >= 10 },
+    { emoji: '💎', name: '累積 50 天', desc: '累積運動 50 天', earned: (s) => s.totalDays >= 50 },
     { emoji: '⏰', name: '500 分鐘', desc: '累積運動 500 分鐘', earned: (s) => s.totalMinutes >= 500 },
     { emoji: '👑', name: '2000 分鐘', desc: '累積運動 2000 分鐘', earned: (s) => s.totalMinutes >= 2000 },
   ];
@@ -544,7 +551,7 @@
   function renderBadges() {
     const workouts = records.filter(isWorkout);
     const stats = {
-      totalCount: workouts.length,
+      totalDays: new Set(workouts.map((r) => r.date)).size,
       totalMinutes: workouts.reduce((s, r) => s + r.minutes, 0),
       maxStreak: maxStreak(),
     };
@@ -814,8 +821,8 @@
   goalInput.value = loadGoal();
   document.getElementById('btn-save-goal').addEventListener('click', () => {
     const n = Number(goalInput.value);
-    if (!(n >= 1 && n <= 14)) {
-      toast('目標請設定 1～14 次 🙏');
+    if (!(n >= 1 && n <= 7)) {
+      toast('目標請設定 1～7 天 🙏');
       return;
     }
     saveGoal(n);

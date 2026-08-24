@@ -447,6 +447,10 @@
     save();
     closeForm();
     renderList();
+    // 從統計頁的日期明細開啟編輯時，儲存後即時更新統計畫面
+    if (document.getElementById('page-stats').classList.contains('active')) {
+      renderStats();
+    }
   });
 
   /* ---------- 統計 ---------- */
@@ -467,6 +471,7 @@
     renderWeekChart();
     renderTypeChart();
     renderCalendar();
+    renderCalDetail();
     renderBadges();
   }
 
@@ -510,7 +515,74 @@
       else if (recoverDays.has(dateStr)) cell.classList.add('recover');
       if (dateStr === t) cell.classList.add('today');
       if (dateStr > t) cell.classList.add('future');
+      if (dateStr === selectedDate) cell.classList.add('selected');
+      cell.addEventListener('click', () => {
+        selectedDate = dateStr;
+        renderCalendar();
+        renderCalDetail();
+      });
       cal.appendChild(cell);
+    }
+  }
+
+  /* ---- 點日期看當天紀錄 ---- */
+  let selectedDate = todayStr();
+
+  function renderCalDetail() {
+    const box = document.getElementById('cal-detail');
+    box.innerHTML = '';
+    if (!selectedDate) return;
+
+    const title = document.createElement('h3');
+    title.textContent = `${dateLabel(selectedDate)} 的紀錄`;
+    box.appendChild(title);
+
+    const items = records
+      .filter((r) => r.date === selectedDate)
+      .sort((a, b) => b.id - a.id);
+
+    if (items.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'cal-empty';
+      p.textContent = '這天沒有紀錄 🌙';
+      box.appendChild(p);
+      return;
+    }
+
+    for (const r of items) {
+      const types = r.types || ['其他'];
+      const meta = [`⏱️ ${r.minutes} 分`];
+      if (r.distance) meta.push(`🗺️ ${r.distance} km`);
+      if (r.calories) meta.push(`🔥 ${r.calories} 大卡`);
+      if (r.intensity) meta.push(`${INTENSITY_EMOJI[r.intensity] || ''} ${r.intensity}`.trim());
+
+      const card = document.createElement('div');
+      card.className = 'mini-record';
+      card.innerHTML = `
+        <span class="mini-emoji"></span>
+        <div class="mini-main">
+          <div class="mini-type"></div>
+          <div class="mini-meta"></div>
+          <div class="mini-note hidden"></div>
+        </div>
+        <button class="icon-btn" aria-label="編輯">✏️</button>`;
+      card.querySelector('.mini-emoji').textContent = emojiOf(types[0]);
+      const typeEl = card.querySelector('.mini-type');
+      typeEl.textContent = types.join('、');
+      if (!isWorkout(r)) {
+        const tag = document.createElement('span');
+        tag.className = 'tag-recover';
+        tag.textContent = '恢復';
+        typeEl.appendChild(tag);
+      }
+      card.querySelector('.mini-meta').textContent = meta.join(' · ');
+      if (r.note) {
+        const noteEl = card.querySelector('.mini-note');
+        noteEl.textContent = r.note;
+        noteEl.classList.remove('hidden');
+      }
+      card.querySelector('button').addEventListener('click', () => openForm(r));
+      box.appendChild(card);
     }
   }
 

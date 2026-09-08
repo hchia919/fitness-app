@@ -1,0 +1,16 @@
+{
+  "name": "記帳小豬 — 個人記帳",
+  "short_name": "記帳小豬",
+  "description": "簡單、可愛、每天想打開的個人記帳 App",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFDF9",
+  "theme_color": "#FF8A65",
+  "lang": "zh-Hant",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

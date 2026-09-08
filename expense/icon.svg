@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="44" fill="#FFF2E8"/>
+  <g transform="translate(20 26) scale(1.28)">
+    <path d="M6 62c0-19 17-32 38-32s38 13 38 32-17 34-38 34S6 81 6 62z" fill="#FFAEBC"/>
+    <path d="M14 40c-4-9-2-14 1-15 4-1 10 4 13 9z" fill="#FF97AC"/>
+    <path d="M74 40c4-9 2-14-1-15-4-1-10 4-13 9z" fill="#FF97AC"/>
+    <rect x="34" y="34" width="20" height="5" rx="2.5" fill="#F4789B"/>
+    <ellipse cx="80" cy="63" rx="11" ry="9" fill="#FF97AC"/>
+    <circle cx="77" cy="61" r="2" fill="#E05678"/><circle cx="83" cy="65" r="2" fill="#E05678"/>
+    <circle cx="60" cy="56" r="3.4" fill="#4A3B45"/>
+    <path d="M48 70c4 4 11 4 15 0" stroke="#E05678" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+    <rect x="18" y="92" width="10" height="12" rx="5" fill="#FF97AC"/>
+    <rect x="46" y="92" width="10" height="12" rx="5" fill="#FF97AC"/>
+    <circle cx="36" cy="24" r="11" fill="#FFC95C"/>
+    <text x="36" y="29" font-size="14" font-weight="700" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif">$</text>
+  </g>
+</svg>

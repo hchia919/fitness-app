@@ -1,0 +1,107 @@
+/* ── 首頁 ─────────────────────────────────────────── */
+.allow {
+  display:flex; align-items:center; gap:12px;
+  background: linear-gradient(120deg, var(--mint-soft), var(--blue-soft));
+  border-radius: var(--r-lg); padding: 14px 15px; margin-bottom:12px;
+}
+.allow .e { font-size:24px; }
+.allow .n { font-size:11.5px; font-weight:800; color: var(--text-2); letter-spacing:.3px; }
+.allow .v { font-size:24px; font-weight:800; letter-spacing:-.7px; }
+.allow .s { font-size:11.5px; color: var(--text-2); margin-top:1px; }
+
+.minitrend { margin-top:2px; }
+
+/* ── 統計 ─────────────────────────────────────────── */
+.periodbar { display:flex; align-items:center; gap:8px; margin: 2px 0 12px; }
+.periodbar .nav { width:32px; height:32px; border-radius:50%; background:var(--card); box-shadow:var(--sh-1); display:grid; place-items:center; font-size:14px; color:var(--text-2); flex:0 0 auto; }
+.periodbar .nav[disabled] { opacity:.3; }
+.periodbar .now { flex:1; text-align:center; font-size:13px; font-weight:800; color: var(--text-2); }
+
+.donutwrap { display:flex; align-items:center; gap:8px; }
+.donutwrap .legend { flex:1; min-width:0; }
+.leg { display:flex; align-items:center; gap:7px; padding:3.5px 0; font-size:12.5px; width:100%; text-align:left; }
+.leg .dot { width:9px; height:9px; border-radius:3px; flex:0 0 auto; }
+.leg .n { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; }
+.leg .p { font-weight:800; color:var(--text-2); font-variant-numeric:tabular-nums; }
+
+.cmp { display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; }
+.cmp .tag {
+  font-size:12px; font-weight:800; padding:3px 9px; border-radius:var(--r-pill);
+}
+.cmp .tag.up { background: var(--primary-soft); color: var(--primary-2); }
+.cmp .tag.down { background: var(--mint-soft); color: var(--mint); }
+.cmp .tag.flat { background: var(--bg-soft); color: var(--text-3); }
+
+/* ── 固定支出 ─────────────────────────────────────── */
+.fixedhero {
+  background: linear-gradient(150deg, #9B8CFF, #7C6BF5 55%, #6D8CFF);
+  color:#fff; border-radius: var(--r-xl); padding:18px; margin-bottom:12px;
+  box-shadow: 0 10px 28px rgba(124,107,245,.28);
+  position:relative; overflow:hidden;
+}
+.fixedhero::after{ content:""; position:absolute; right:-30px; bottom:-60px; width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.13) }
+.fixedhero .label { color: rgba(255,255,255,.85); }
+.fixedhero .m-xl { color:#fff; }
+.fixedhero .split { margin-top:13px; padding-top:11px; border-top:1px solid rgba(255,255,255,.24); display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.fixedhero .split .v { font-size:15px; font-weight:800; }
+
+.timeline { position:relative; padding-left:20px; }
+.timeline::before { content:""; position:absolute; left:5px; top:8px; bottom:8px; width:2px; background:var(--line); border-radius:2px; }
+.tlrow { position:relative; display:flex; align-items:center; gap:9px; padding:8px 0; }
+.tlrow::before {
+  content:""; position:absolute; left:-19px; top:50%; margin-top:-4px;
+  width:9px;height:9px;border-radius:50%; background:var(--line-2);
+  box-shadow: 0 0 0 3px var(--card);
+}
+.tlrow.soon::before { background: var(--yellow); }
+.tlrow.today::before { background: var(--primary); }
+.tlrow .d { font-size:11.5px; font-weight:800; color:var(--text-3); width:46px; flex:0 0 auto; }
+.tlrow .n { flex:1; min-width:0; font-size:13.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tlrow .a { font-size:13.5px; font-weight:800; }
+
+.recrow { display:flex; align-items:center; gap:11px; padding:11px 0; width:100%; text-align:left; }
+.recrow + .recrow { border-top:1px solid var(--line); }
+.recrow.off { opacity:.45; }
+.recrow .ava { width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font-size:19px;flex:0 0 auto }
+.recrow .mid{flex:1;min-width:0}
+.recrow .n{display:block;font-weight:700;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recrow .s{display:block;font-size:11.5px;color:var(--text-3);margin-top:1px}
+.recrow .right{text-align:right}
+.recrow .a{font-weight:800;font-size:15px}
+.recrow .nx{font-size:11px;color:var(--text-3);font-weight:700}
+.recrow .nx.soon{color:var(--primary-2)}
+
+/* ── 我的 / 設定 ──────────────────────────────────── */
+.menu { background:var(--card); border-radius:var(--r-lg); box-shadow:var(--sh-1); overflow:hidden; margin-bottom:12px; }
+.mrow { display:flex; align-items:center; gap:12px; padding:14px 16px; width:100%; text-align:left; }
+.mrow + .mrow { border-top:1px solid var(--line); }
+.mrow .e { font-size:18px; width:22px; text-align:center; }
+.mrow .n { flex:1; font-weight:700; font-size:14.5px; }
+.mrow .v { font-size:12.5px; color:var(--text-3); font-weight:700; }
+.mrow .arr { color:var(--text-3); font-size:13px; }
+.mrow:active { background: var(--bg-soft); }
+
+.catmanage-row { display:flex; align-items:center; gap:11px; padding:10px 0; }
+.catmanage-row + .catmanage-row { border-top:1px solid var(--line); }
+.catmanage-row .ava{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:18px;flex:0 0 auto}
+.catmanage-row .n{flex:1;font-weight:700;font-size:14px}
+.catmanage-row.arch { opacity:.45; }
+
+/* ── 搜尋列 ───────────────────────────────────────── */
+.searchbar {
+  display:flex; align-items:center; gap:9px;
+  background: var(--card); border-radius: var(--r-pill);
+  padding: 11px 15px; box-shadow: var(--sh-1); margin-bottom: 10px;
+}
+.searchbar input { flex:1; font-size:15px; }
+.filterpanel { background:var(--card); border-radius:var(--r-lg); box-shadow:var(--sh-1); padding:14px; margin-bottom:12px; }
+
+/* ── 月底回顧 ─────────────────────────────────────── */
+.review { text-align:center; }
+.review .cap { font-size:12px; font-weight:800; color:var(--text-3); letter-spacing:1px; }
+.review h2 { margin:4px 0 2px; font-size:22px; font-weight:800; }
+.review .big { font-size:38px; font-weight:800; letter-spacing:-1.5px; margin:8px 0 0; }
+.reviewtop { text-align:left; margin-top:14px; }
+.reviewstats { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+.reviewstats > div { background:var(--card-2); border-radius:var(--r-md); padding:11px; text-align:center; }
+.reviewstats .v { font-size:18px; font-weight:800; }

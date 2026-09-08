@@ -47,3 +47,15 @@ manifest.webmanifest  PWA 設定
 sw.js                 Service Worker（離線快取）
 icon.svg              APP 圖示
 ```
+
+---
+
+## 🐷 記帳小豬（`expense/`）
+
+同一個 repo 裡還有一個獨立的 App：[**記帳小豬**](expense/) —— 個人記帳 PWA。
+
+首頁／統計／➕記帳／固定支出／我的，支援週期性支出、預算與「今天還能花多少」、
+統計分析與月底回顧。同樣是純前端、零安裝、資料只存在本機。
+
+詳細說明見 [`expense/README.md`](expense/README.md)。
+部署後的網址是 `你的網址/expense/`，可以單獨加到手機主畫面。

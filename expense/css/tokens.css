@@ -1,0 +1,85 @@
+/* ── 設計 token：色彩／圓角／陰影／字級 ───────────────────── */
+:root {
+  /* 底色 */
+  --bg:          #FFFDF9;
+  --bg-soft:     #FFF6EC;
+  --card:        #FFFFFF;
+  --card-2:      #FFF9F3;
+  --line:        #F2ECE4;
+  --line-2:      #E8E0D6;
+
+  /* 文字 */
+  --text:        #2B2A33;
+  --text-2:      #6E6A79;
+  --text-3:      #A9A4B4;
+  --on-color:    #FFFFFF;
+
+  /* 主色系 */
+  --primary:     #FF8A65;
+  --primary-2:   #FF7043;
+  --primary-soft:#FFE8DF;
+  --mint:        #3FC79A;
+  --mint-soft:   #DEF7EE;
+  --lav:         #9B8CFF;
+  --lav-soft:    #EBE7FF;
+  --yellow:      #FFC95C;
+  --yellow-soft: #FFF4D9;
+  --blue:        #64B5F6;
+  --blue-soft:   #E3F2FD;
+  --pink:        #F48FB1;
+  --danger:      #FF7A7A;
+  --danger-soft: #FFE6E6;
+
+  /* 形狀 */
+  --r-xl:  28px;
+  --r-lg:  22px;
+  --r-md:  16px;
+  --r-sm:  11px;
+  --r-pill:999px;
+
+  /* 陰影 */
+  --sh-1: 0 1px 3px rgba(90,70,50,.05), 0 4px 14px rgba(90,70,50,.045);
+  --sh-2: 0 6px 26px rgba(90,70,50,.10);
+  --sh-fab: 0 6px 18px rgba(255,112,67,.38);
+
+  /* 版面 */
+  --tab-h: 62px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --maxw: 520px;
+
+  --ease: cubic-bezier(.22,.61,.36,1);
+  --spring: cubic-bezier(.34,1.4,.5,1);
+}
+
+/* 深色模式：跟隨系統，除非使用者手動指定 light */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:          #16171D;
+    --bg-soft:     #1C1E25;
+    --card:        #21232B;
+    --card-2:      #262933;
+    --line:        #2F323C;
+    --line-2:      #3A3E4A;
+    --text:        #ECEAF1;
+    --text-2:      #A8A4B4;
+    --text-3:      #74707F;
+    --primary-soft:#3B2A26;
+    --mint-soft:   #1E3831;
+    --lav-soft:    #2B2740;
+    --yellow-soft: #3A3120;
+    --blue-soft:   #1F2C3A;
+    --danger-soft: #3B2429;
+    --sh-1: 0 1px 3px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+    --sh-2: 0 6px 26px rgba(0,0,0,.4);
+  }
+}
+/* 手動深色 */
+:root[data-theme="dark"] {
+  --bg:#16171D; --bg-soft:#1C1E25; --card:#21232B; --card-2:#262933;
+  --line:#2F323C; --line-2:#3A3E4A;
+  --text:#ECEAF1; --text-2:#A8A4B4; --text-3:#74707F;
+  --primary-soft:#3B2A26; --mint-soft:#1E3831; --lav-soft:#2B2740;
+  --yellow-soft:#3A3120; --blue-soft:#1F2C3A; --danger-soft:#3B2429;
+  --sh-1: 0 1px 3px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+  --sh-2: 0 6px 26px rgba(0,0,0,.4);
+}

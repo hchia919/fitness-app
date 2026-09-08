@@ -157,14 +157,15 @@ var Insights = (function () {
         ? '這週還沒有支出紀錄，上週是 ' + U.money(c.prev.expense) + '。'
         : '這週還沒有支出紀錄，開個張吧 🌱';
     }
-    var parts = [];
-    parts.push('這週花了 ' + U.money(c.cur.expense));
+    var out = '這週花了 ' + U.money(c.cur.expense);
+    if (top) out += '，最多花在' + top.emoji + top.name;
+    out += '。';
     if (c.prev.expense > 0 && c.rate != null) {
-      parts.push(c.diff <= 0 ? ('比上週少 ' + Math.abs(Math.round(c.rate)) + '%，做得不錯！')
-        : ('比上週多 ' + Math.round(c.rate) + '%'));
+      out += c.diff <= 0
+        ? ' 比上週少 ' + Math.abs(Math.round(c.rate)) + '%，做得不錯！'
+        : ' 比上週多 ' + Math.round(c.rate) + '%，注意一下節奏。';
     }
-    if (top) parts.push('最多花在' + top.emoji + top.name);
-    return parts.join('，') + '。';
+    return out;
   }
 
   /* 月底回顧 */

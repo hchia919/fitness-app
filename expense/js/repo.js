@@ -320,7 +320,7 @@ var Repo = (function () {
   }
   /* 開 App／匯入資料後重算（換日、匯入備份都需要） */
   function refreshStreakNow() {
-    Store.mutate(function (s) { refreshStreak(s); }, { silent: true });
+    Store.mutate(function (s) { refreshStreak(s); checkAchievements(s); }, { silent: true });
   }
   function streakToday() {
     var s = Store.get();

@@ -199,13 +199,14 @@ var Recur = (function () {
     var api = UI.sheet({
       title: id ? '編輯固定支出' : '新增固定支出',
       body: form(d, id),
-      onMount: function (a) { bind(a, d, id); }
+      onMount: function (a) { bind(a, d, id); UI.fitGridRows(a.el, '.catgrid', 2); }
     });
 
     function repaint() {
       var snap = UI.captureFocus();
       api.setBody(form(d, id));
       bind(api, d, id);
+      UI.fitGridRows(api.el, '.catgrid', 2);
       UI.restoreFocus(snap);
     }
     editSheet._repaint = repaint;
@@ -248,7 +249,7 @@ var Recur = (function () {
     h += '</div>';
 
     h += '<div class="field"><span class="label">類別</span>' +
-      '<div class="catgrid" style="max-height:132px;overflow-y:auto">' + cats.map(function (c) {
+      '<div class="catgrid" style="max-height:132px;overflow-y:auto;scroll-snap-type:y proximity">' + cats.map(function (c) {
         return '<button class="catcell ' + (c.id === d.categoryId ? 'on' : '') + '" data-rcat="' + c.id + '">' +
           '<span class="e">' + c.emoji + '</span><span class="n">' + U.esc(c.name) + '</span></button>';
       }).join('') + '</div></div>';

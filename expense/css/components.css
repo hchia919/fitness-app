@@ -334,3 +334,33 @@ textarea.input { resize:none; }
   font-size:15px; font-weight:800; letter-spacing:-.5px;
 }
 .ringtxt i { font-size:9px; font-style:normal; margin-left:1px; }
+
+/* 類別格上方的提示列 */
+.cathint {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin: 9px 3px 0;
+}
+.cathint .more { font-size: 12px; font-weight: 800; color: var(--primary-2); }
+.cathint .more:active { opacity: .6; }
+
+/* 長按中的視覺回饋 */
+.catcell { -webkit-touch-callout: none; user-select: none; scroll-snap-align: start; }
+.catcell.pressing { transform: scale(.88); opacity: .7; }
+
+/* ── 記帳面板：上半捲動、鍵盤固定在下方 ─────────────────
+   小螢幕手機也永遠看得到「完成」                        */
+.sheet.flexsheet { display: flex; flex-direction: column; overflow: hidden; }
+.sheet.flexsheet > .sheet-body {
+  flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+}
+.entry-scroll {
+  flex: 1; min-height: 0; overflow-y: auto;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.entry-scroll::-webkit-scrollbar { display: none; }
+.entry-foot { flex: 0 0 auto; }
+
+/* 螢幕矮的時候自動縮一點，不犧牲可用性 */
+.key { height: clamp(44px, 6.6vh, 52px); font-size: clamp(18px, 2.7vh, 21px); }
+.amount-display { min-height: clamp(46px, 7vh, 56px); }
+.amount-display .v { font-size: clamp(34px, 5.6vh, 44px); }

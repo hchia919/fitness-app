@@ -36,7 +36,7 @@ var UI = (function () {
     var mask = document.createElement('div');
     mask.className = 'sheet-mask' + (cfg.center ? ' mid' : '');
     var inner = document.createElement('div');
-    inner.className = 'sheet' + (cfg.center ? ' center' : '');
+    inner.className = 'sheet' + (cfg.center ? ' center' : '') + (cfg.flex ? ' flexsheet' : '');
     inner.innerHTML =
       (cfg.center ? '' : '<div class="grab"></div>') +
       (cfg.title ? '<div class="sheet-h"><div class="t">' + cfg.title + '</div>' +
@@ -120,6 +120,81 @@ var UI = (function () {
     try { el.setSelectionRange(snap.start, snap.end); } catch (e) {}
   }
 
+
+  /* ---------- 長按 ----------
+     在 root 上做事件委派，長按符合 selector 的元素就觸發 fn(el)。
+     回傳 { consumed() }：長按觸發後的那一次 click 要用它擋掉。   */
+  function longPress(root, selector, fn, ms) {
+    var timer = null, pressTimer = null, fired = false, cur = null, sx = 0, sy = 0;
+
+    function clearPressing() {
+      clearTimeout(pressTimer); pressTimer = null;
+      if (cur) { cur.classList.remove('pressing'); cur = null; }
+    }
+    function cancel() { clearTimeout(timer); timer = null; clearPressing(); }
+
+    function start(e) {
+      var el = e.target.closest && e.target.closest(selector);
+      if (!el) return;
+      /* 滑鼠只認左鍵 */
+      if (e.button != null && e.button !== 0 && !e.touches) return;
+      cancel();
+      fired = false; cur = el;
+      var t = e.touches ? e.touches[0] : e;
+      sx = t.clientX; sy = t.clientY;
+      pressTimer = setTimeout(function () { if (cur) cur.classList.add('pressing'); }, 130);
+      timer = setTimeout(function () {
+        timer = null; fired = true;
+        clearPressing();
+        haptic(28);
+        fn(el);
+      }, ms || 480);
+    }
+    function move(e) {
+      if (!timer) return;
+      var t = e.touches ? e.touches[0] : e;
+      if (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10) cancel();
+    }
+
+    root.addEventListener('touchstart', start, { passive: true });
+    root.addEventListener('touchmove', move, { passive: true });
+    root.addEventListener('touchend', cancel);
+    root.addEventListener('touchcancel', cancel);
+    root.addEventListener('mousedown', start);
+    root.addEventListener('mousemove', move);
+    root.addEventListener('mouseup', cancel);
+    root.addEventListener('mouseleave', cancel);
+    root.addEventListener('contextmenu', function (e) {
+      if (e.target.closest && e.target.closest(selector)) e.preventDefault();
+    });
+
+    return { consumed: function () { var f = fired; fired = false; return f; } };
+  }
+
+
+  /* ---------- 類別格高度自動對齊整排 ----------
+     依照裝置剩餘空間，算出最多能完整放幾排，絕不切一半排。 */
+  function fitGridRows(container, selector, minRows, useClientHeight) {
+    if (!container) return;
+    var grid = container.querySelector(selector);
+    if (!grid) return;
+    var cell = grid.children[0];
+    if (!cell) return;
+    var gap = parseFloat(getComputedStyle(grid).rowGap || '8') || 8;
+    var rowH = cell.getBoundingClientRect().height + gap;
+    if (!(rowH > gap)) return;
+
+    var prev = grid.style.maxHeight;
+    grid.style.maxHeight = '0px';
+    var base = container.scrollHeight;               /* 扣掉類別格以後的內容高度 */
+    var totalRows = Math.max(1, Math.round((grid.scrollHeight + gap) / rowH));
+    var box = useClientHeight ? container.clientHeight : window.innerHeight * 0.92;
+    var rows = Math.floor((box - base + gap) / rowH);
+    rows = Math.max(minRows || 2, Math.min(totalRows, rows));
+    if (!isFinite(rows) || rows < 1) { grid.style.maxHeight = prev; return; }
+    grid.style.maxHeight = (rows * rowH - gap) + 'px';
+  }
+
   /* ---------- 吉祥物（存錢筒） ---------- */
   function piggy(size) {
     size = size || 96;
@@ -148,8 +223,8 @@ var UI = (function () {
 
   return {
     toast: toast, haptic: haptic, flyAmount: flyAmount,
-    sheet: sheet, closeTop: closeTop, hasSheet: hasSheet, confirm: confirm,
-    captureFocus: captureFocus, restoreFocus: restoreFocus,
+    sheet: sheet, closeTop: closeTop, hasSheet: hasSheet, confirm: confirm, longPress: longPress,
+    captureFocus: captureFocus, restoreFocus: restoreFocus, fitGridRows: fitGridRows,
     piggy: piggy, empty: empty
   };
 })();

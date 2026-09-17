@@ -9,8 +9,11 @@ var Manage = (function () {
     '#3FC79A', '#9CCC65', '#FFC95C', '#FFB74D', '#A1887F', '#90A4AE', '#BDBDBD'];
 
   /* ---------- 類別管理 ---------- */
-  function categorySheet() {
-    var api = UI.sheet({ title: '類別管理', body: catBody(), onMount: bindCat });
+  function categorySheet(onDone) {
+    var api = UI.sheet({
+      title: '類別管理', body: catBody(), onMount: bindCat,
+      onClose: function () { categorySheet._api = null; if (onDone) onDone(); }
+    });
     categorySheet._api = api;
   }
   function repaintCat() {

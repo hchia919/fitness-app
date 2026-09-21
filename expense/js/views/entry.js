@@ -3,6 +3,7 @@
 var Entry = (function () {
   var st = null;   /* 目前編輯狀態 */
   var api = null;
+  var lp = null;   /* 類別長按控制器 */
 
   function sortedCats(type) {
     var arr = Repo.cats({ type: type });
@@ -34,10 +35,11 @@ var Entry = (function () {
       st.categoryId = cats.length ? cats[0].id : null;
     }
     api = UI.sheet({
+      flex: true,
       title: st.editId ? '編輯這筆' : '記一筆',
       body: render(),
-      onMount: function (a) { bind(a); },
-      onClose: function () { st = null; api = null; }
+      onMount: function (a) { bind(a); attachLongPress(a); fit(a.el); },
+      onClose: function () { st = null; api = null; lp = null; }
     });
   }
 
@@ -96,7 +98,7 @@ var Entry = (function () {
     var combos = st.editId ? [] : Q.quickCombos(3, st.type);
     var v = value();
 
-    var h = '';
+    var h = '<div class="entry-scroll">';
 
     /* 快速組合：1 次觸碰完成 */
     if (combos.length) {
@@ -121,7 +123,10 @@ var Entry = (function () {
       '<div class="amount-expr num" data-expr>' + exprText() + '</div>';
 
     /* 類別 */
-    h += '<div class="catgrid" style="margin:8px 0 4px;max-height:172px;overflow-y:auto">' +
+    h += '<div class="cathint">' +
+      '<span class="tiny faint">長按類別可改名稱／圖示</span>' +
+      '<button class="more" data-managecats>✏️ 管理類別</button></div>';
+    h += '<div class="catgrid" style="margin:2px 0 4px;max-height:172px;overflow-y:auto;scroll-snap-type:y proximity">' +
       cats.map(function (c) {
         return '<button class="catcell ' + (c.id === st.categoryId ? 'on' : '') + '" data-cat="' + c.id + '">' +
           '<span class="e">' + c.emoji + '</span><span class="n">' + U.esc(c.name) + '</span></button>';
@@ -129,10 +134,8 @@ var Entry = (function () {
       '<button class="catcell" data-newcat><span class="e">➕</span><span class="n">新類別</span></button>' +
       '</div>';
 
-    /* 第二排：日期／付款／備註（可選，不擋路） */
-    h += '<button class="chip" data-toggle-more style="width:100%;text-align:center;margin:6px 0 2px;background:transparent;color:var(--text-3)">' +
-      (st.showMore ? '收合' : U.fmtDate(st.date) + ' · ' + Repo.pay(st.paymentMethodId).name + (st.note ? ' · ' + U.esc(st.note) : '') + '  ▾') + '</button>';
-
+    /* 日期／付款／備註（可選，不擋路） */
+    h += '<div class="entry-extra">';
     if (st.showMore) {
       h += '<div style="margin-top:6px">' +
         '<div class="chips" style="margin-bottom:7px">' +
@@ -149,7 +152,12 @@ var Entry = (function () {
         '</div>';
     }
 
-    /* 數字鍵盤 */
+
+    h += '</div></div><div class="entry-foot">';
+    h += '<button class="chip" data-toggle-more style="width:100%;text-align:center;margin:6px 0 2px;background:transparent;color:var(--text-3)">' +
+      (st.showMore ? '收合 ▴' : U.fmtDate(st.date) + ' · ' + Repo.pay(st.paymentMethodId).name + (st.note ? ' · ' + U.esc(st.note) : '') + '  ▾') + '</button>';
+
+    /* 數字鍵盤固定在下方，永遠看得到「完成」 */
     h += '<div class="keypad">' +
       key('7') + key('8') + key('9') + opKey('del', '⌫') +
       key('4') + key('5') + key('6') + opKey('plus', '＋') +
@@ -161,16 +169,58 @@ var Entry = (function () {
     if (st.editId) {
       h += '<button class="btn danger block" style="margin-top:10px" data-del>🗑 刪除這筆</button>';
     }
-    return h;
+    return h + '</div>';
   }
   function key(k) { return '<button class="key num" data-k="' + k + '">' + k + '</button>'; }
   function opKey(k, label) { return '<button class="key op" data-k="' + k + '">' + label + '</button>'; }
 
   function repaint() {
+    if (!api || !st) return;          /* 面板已經關掉就不用重繪 */
+    var cs = sortedCats(st.type);
+    if (!cs.some(function (c) { return c.id === st.categoryId; })) {
+      st.categoryId = cs.length ? cs[0].id : null;
+    }
     var snap = UI.captureFocus();
     api.setBody(render());
     bind(api);
+    fit();
     UI.restoreFocus(snap);
+  }
+
+  /* 類別格只顯示完整的整排，不切一半：
+     依這支手機還剩多少高度，算出最多能放幾整排 */
+  function fit(root) {
+    root = root || (api && api.el);
+    if (!root) return;
+    var scroll = root.querySelector('.entry-scroll');
+    var grid = root.querySelector('.catgrid');
+    var foot = root.querySelector('.entry-foot');
+    if (!scroll || !grid || !grid.children[0]) return;
+
+    var gap = parseFloat(getComputedStyle(grid).rowGap || '8') || 8;
+    var rowH = grid.children[0].getBoundingClientRect().height + gap;
+    if (!(rowH > gap)) return;
+
+    grid.style.maxHeight = '0px';
+    var totalRows = Math.max(1, Math.round((grid.scrollHeight + gap) / rowH));
+
+    var cs = getComputedStyle(root);
+    var base = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    Array.prototype.forEach.call(root.children, function (ch) {
+      if (!ch.classList.contains('sheet-body')) base += ch.offsetHeight;   /* 把手、標題列 */
+    });
+    base += scroll.scrollHeight + (foot ? foot.offsetHeight : 0);
+
+    var avail = window.innerHeight * 0.92 - base;
+    var rows = Math.max(2, Math.min(totalRows, Math.floor((avail + gap) / rowH)));
+    grid.style.maxHeight = (rows * rowH - gap) + 'px';
+  }
+
+  /* 長按類別 → 直接編輯（改名、換 emoji、換顏色、刪除） */
+  function attachLongPress(a) {
+    lp = UI.longPress(a.el, '[data-cat]', function (el) {
+      Manage.editCategorySheet(el.dataset.cat, function () { repaint(); });
+    });
   }
 
   /* ---------- 事件 ---------- */
@@ -188,11 +238,22 @@ var Entry = (function () {
         if (!cs.some(function (c) { return c.id === st.categoryId; })) st.categoryId = cs.length ? cs[0].id : null;
         repaint(); return;
       }
-      if (t.dataset.cat) { st.categoryId = t.dataset.cat; UI.haptic(10); repaint(); return; }
+      if (t.dataset.cat) {
+        if (lp && lp.consumed()) return;            /* 長按剛開了編輯視窗，別再選取 */
+        st.categoryId = t.dataset.cat; UI.haptic(10); repaint(); return;
+      }
+      if (t.hasAttribute('data-managecats')) { Manage.categorySheet(repaint); return; }
       if (t.hasAttribute('data-newcat')) { Manage.newCategorySheet(st.type, function (id) { st.categoryId = id; repaint(); }); return; }
       if (t.dataset.date) { st.date = t.dataset.date; repaint(); return; }
       if (t.dataset.pay) { st.paymentMethodId = t.dataset.pay; repaint(); return; }
-      if (t.hasAttribute('data-toggle-more')) { st.showMore = !st.showMore; repaint(); return; }
+      if (t.hasAttribute('data-toggle-more')) {
+        st.showMore = !st.showMore; repaint();
+        if (st.showMore) {                       /* 展開後自動捲到日期／付款那一區 */
+          var sc = api && api.el.querySelector('.entry-scroll');
+          if (sc) sc.scrollTop = sc.scrollHeight;
+        }
+        return;
+      }
       if (t.dataset.combo) { applyCombo(t.dataset.combo); return; }
       if (t.hasAttribute('data-go')) { save(t); return; }
       if (t.hasAttribute('data-del')) { removeTx(); return; }

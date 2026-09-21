@@ -81,11 +81,12 @@ var Insights = (function () {
   function homeLine(settings) {
     var t = U.today();
     var st = Repo.settings().streak;
-    var dues = Repo.dueList().length;
+    var dues = Repo.dueList();
     var lastTx = Repo.txs().slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; })[0];
 
+    /* 有待確認的收支就先提醒，它比歡迎詞更需要你動手 */
+    if (dues.length) return { e: '🔔', text: '有 ' + dues.length + ' 筆' + Repo.kindLabelOf(dues) + '等你確認，一鍵就能補上。' };
     if (!Repo.txs().length) return { e: '🐷', text: '歡迎！按下方的 ＋ 記下第一筆，只要 3 秒。' };
-    if (dues) return { e: '🔔', text: '有 ' + dues + ' 筆固定支出等你確認，一鍵就能補上。' };
     if (lastTx) {
       var gap = U.diffDays(lastTx.date, t);
       if (gap >= 3) return { e: '👋', text: '你有 ' + gap + ' 天沒記帳了，補一下就跟上囉！' };

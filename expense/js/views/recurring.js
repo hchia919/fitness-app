@@ -25,7 +25,12 @@ var Recur = (function () {
       '<div><div class="label">本月待扣</div><div class="v num">' + U.money(thisMonth) + '</div></div>' +
       '<div><div class="label">年度總額</div><div class="v num">' + U.moneyR(monthly * 12) + '</div></div>' +
       '</div>' +
-      (monthlyIn > 0 ? '<div class="tiny" style="margin-top:10px;color:rgba(255,255,255,.9)">＋ 固定收入月均 ' + U.moneyR(monthlyIn) + '</div>' : '') +
+      (monthlyIn > 0
+        ? '<div class="split" style="margin-top:11px;grid-template-columns:1fr 1fr">' +
+          '<div><div class="label">固定收入（月均）</div><div class="v num">+' + U.moneyR(monthlyIn) + '</div></div>' +
+          '<div><div class="label">淨固定支出</div><div class="v num">' + U.moneyR(monthly - monthlyIn) + '</div></div>' +
+          '</div>'
+        : '') +
       '</div>';
 
     /* 到期待確認 */
@@ -34,10 +39,11 @@ var Recur = (function () {
       h += '<div class="card"><div class="card-h"><span>🔔</span><span class="t">' + dues.length + ' 筆待確認</span></div>' +
         dues.map(function (d) {
           var c = Repo.cat(d.categoryId);
+          var inc = Repo.isIncome(d);
           return '<div class="budget-row"><div class="top">' +
             '<span>' + c.emoji + '</span><span class="n">' + U.esc(d.name) + '</span>' +
-            '<span class="v num">' + U.money(d.amount) + '</span></div>' +
-            '<div class="tiny faint" style="margin:2px 0 8px">應扣款日 ' + U.fmtDayHeader(d.nextDueDate) + '</div>' +
+            '<span class="v num' + (inc ? ' pos' : '') + '">' + (inc ? '+' : '') + U.money(d.amount) + '</span></div>' +
+            '<div class="tiny faint" style="margin:2px 0 8px">應' + Repo.dueVerb(d) + '日 ' + U.fmtDayHeader(d.nextDueDate) + '</div>' +
             '<div style="display:flex;gap:7px">' +
             '<button class="btn sm primary" style="flex:1" data-act="due-ok" data-id="' + d.id + '">✅ 記一筆</button>' +
             '<button class="btn sm" style="flex:1" data-act="due-edit" data-id="' + d.id + '">✏️ 改金額</button>' +
@@ -78,10 +84,13 @@ var Recur = (function () {
 
     /* 未來 30 天時間軸 */
     var up = Repo.upcoming(30);
-    h += '<div class="card"><div class="card-h"><span>🗓</span><span class="t">未來 30 天將扣款</span><span class="spacer"></span>' +
-      '<span class="more num">' + U.money(up.filter(function (r) { return r.type === 'expense'; }).reduce(function (a, r) { return a + r.amount; }, 0)) + '</span></div>';
+    var upOut = up.filter(function (r) { return r.type === 'expense'; }).reduce(function (a, r) { return a + r.amount; }, 0);
+    var upIn = up.filter(function (r) { return r.type === 'income'; }).reduce(function (a, r) { return a + r.amount; }, 0);
+    h += '<div class="card"><div class="card-h"><span>🗓</span><span class="t">未來 30 天' + (upIn > 0 ? '的固定收支' : '將扣款') + '</span><span class="spacer"></span>' +
+      '<span class="more num">' + (upOut ? '−' + U.money(upOut) : '') +
+      (upIn > 0 ? (upOut ? '　' : '') + '<span class="pos">+' + U.money(upIn) + '</span>' : '') + '</span></div>';
     if (!up.length) {
-      h += '<div class="tiny faint">未來 30 天沒有排定的扣款，可以喘口氣 🍃</div>';
+      h += '<div class="tiny faint">未來 30 天沒有排定的收支，可以喘口氣 🍃</div>';
     } else {
       h += '<div class="timeline">' + up.map(function (r) {
         var c = Repo.cat(r.categoryId);
@@ -196,16 +205,20 @@ var Recur = (function () {
     }, preset || {});
     if (preset && preset.freq) d.freq = preset.freq;
 
+    function sheetTitle() { return (id ? '編輯' : '新增') + Repo.kindLabel(d); }
+
     var api = UI.sheet({
-      title: id ? '編輯固定支出' : '新增固定支出',
+      title: sheetTitle(),
       body: form(d, id),
-      onMount: function (a) { bind(a, d, id); }
+      onMount: function (a) { bind(a, d, id); UI.fitGridRows(a.el, '.catgrid', 2); }
     });
 
     function repaint() {
       var snap = UI.captureFocus();
+      api.setTitle(sheetTitle());          /* 切換固定支出／固定收入時標題跟著換 */
       api.setBody(form(d, id));
       bind(api, d, id);
+      UI.fitGridRows(api.el, '.catgrid', 2);
       UI.restoreFocus(snap);
     }
     editSheet._repaint = repaint;
@@ -225,11 +238,12 @@ var Recur = (function () {
       '<button data-rtype="income" class="' + (d.type === 'income' ? 'on' : '') + '">固定收入</button></div>';
 
     h += '<div class="field"><span class="label">名稱</span>' +
-      '<input class="input" data-f="name" data-keep="rec-name" placeholder="例：Netflix、房租、健身房" value="' + U.esc(d.name) + '"></div>';
+      '<input class="input" data-f="name" data-keep="rec-name" placeholder="' +
+      (d.type === 'income' ? '例：薪水、租屋補助、股利' : '例：Netflix、房租、健身房') + '" value="' + U.esc(d.name) + '"></div>';
 
     h += '<div class="row2"><div class="field"><span class="label">金額</span>' +
       '<input class="input num" data-f="amount" data-keep="rec-amount" type="number" inputmode="decimal" placeholder="0" value="' + (d.amount === '' ? '' : d.amount) + '"></div>' +
-      '<div class="field"><span class="label">下次扣款日</span>' +
+      '<div class="field"><span class="label">下次' + Repo.dueVerb(d) + '日</span>' +
       '<input class="input" data-f="nextDueDate" type="date" value="' + d.nextDueDate + '"></div></div>';
 
     h += '<div class="field"><span class="label">週期</span>' +
@@ -248,7 +262,7 @@ var Recur = (function () {
     h += '</div>';
 
     h += '<div class="field"><span class="label">類別</span>' +
-      '<div class="catgrid" style="max-height:132px;overflow-y:auto">' + cats.map(function (c) {
+      '<div class="catgrid" style="max-height:132px;overflow-y:auto;scroll-snap-type:y proximity">' + cats.map(function (c) {
         return '<button class="catcell ' + (c.id === d.categoryId ? 'on' : '') + '" data-rcat="' + c.id + '">' +
           '<span class="e">' + c.emoji + '</span><span class="n">' + U.esc(c.name) + '</span></button>';
       }).join('') + '</div></div>';
@@ -339,12 +353,12 @@ var Recur = (function () {
         endDate: d.endDate || null, autoPost: d.autoPost, isActive: d.isActive, note: d.note
       };
       if (id) { Repo.updateRecurring(id, payload); UI.toast('已更新', '✅'); }
-      else { payload.startDate = d.nextDueDate; Repo.addRecurring(payload); UI.toast('固定支出建立好了', '🔁'); }
+      else { payload.startDate = d.nextDueDate; Repo.addRecurring(payload); UI.toast(Repo.kindLabel(payload) + '建立好了', '🔁'); }
       if (payload.autoPost) Repo.processAutoPost();   /* 已到期就立刻補記 */
       api.close();
     }
     function del() {
-      UI.confirm({ emoji: '🗑', title: '刪除這個固定支出？', text: '已經記下的交易不會被刪除。', okText: '刪除', danger: true })
+      UI.confirm({ emoji: '🗑', title: '刪除這個' + Repo.kindLabel(d) + '？', text: '已經記下的交易不會被刪除。', okText: '刪除', danger: true })
         .then(function (ok) { if (ok) { Repo.deleteRecurring(id); UI.toast('已刪除', '🗑'); api.close(); } });
     }
   }
@@ -354,7 +368,7 @@ var Recur = (function () {
     var r = Repo.recurrings().filter(function (x) { return x.id === id; })[0];
     if (!r) return;
     var api = UI.sheet({
-      center: true, title: U.esc(r.name) + ' 這次扣了多少？',
+      center: true, title: U.esc(r.name) + (Repo.isIncome(r) ? ' 這次入帳多少？' : ' 這次扣了多少？'),
       body: '<input class="input num" id="due-amt" type="number" inputmode="decimal" value="' + r.amount + '" style="text-align:center;font-size:26px;font-weight:800">' +
         '<div class="tiny faint" style="margin:8px 0 14px;text-align:center">只影響這一次，不會改掉原本設定的金額</div>' +
         '<button class="btn primary block" id="due-ok">✅ 記一筆</button>',

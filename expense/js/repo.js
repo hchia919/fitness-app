@@ -295,6 +295,17 @@ var Repo = (function () {
     if (f.unit === 'year') return a / (12 * f.interval);
     return a / f.interval;
   }
+  /* 固定收入用「入帳」，固定支出用「扣款」 */
+  function isIncome(r) { return !!r && r.type === 'income'; }
+  function dueVerb(r) { return isIncome(r) ? '入帳' : '扣款'; }
+  function kindLabel(r) { return isIncome(r) ? '固定收入' : '固定支出'; }
+  /* 一串待確認項目的統稱 */
+  function kindLabelOf(list) {
+    var inc = list.filter(isIncome).length;
+    if (!inc) return '固定支出';
+    return inc === list.length ? '固定收入' : '固定收支';
+  }
+
   function freqLabel(r) {
     var f = r.freq, i = f.interval;
     if (f.unit === 'day') return i === 1 ? '每天' : '每 ' + i + ' 天';
@@ -372,6 +383,7 @@ var Repo = (function () {
     dueList: dueList, upcoming: upcoming, confirmDue: confirmDue, skipDue: skipDue,
     processAutoPost: processAutoPost, advance: advance,
     monthlyEquivalent: monthlyEquivalent, freqLabel: freqLabel,
+    isIncome: isIncome, dueVerb: dueVerb, kindLabel: kindLabel, kindLabelOf: kindLabelOf,
     streakToday: streakToday, refreshStreakNow: refreshStreakNow, takeNewAchievements: takeNewAchievements, grantMonthly: grantMonthly
   };
 })();

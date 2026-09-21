@@ -32,16 +32,17 @@ var Home = (function () {
       '<div class="hero-note"><span>' + line.e + '</span><span>' + U.esc(line.text) + '</span></div>' +
       '</div>';
 
-    /* ── 到期的固定支出（可一鍵補上） ── */
+    /* ── 到期的固定收支（可一鍵補上） ── */
     var dues = Repo.dueList();
     if (dues.length) {
       var d = dues[0];
       var dc = Repo.cat(d.categoryId);
-      h += '<div class="due">' +
+      h += '<div class="due"' + (Repo.isIncome(d) ? ' style="border-left-color:var(--mint)"' : '') + '>' +
         '<div class="top"><div class="tx-ava ava" style="width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font-size:19px;background:' + U.tint(dc.color, .16) + '">' + dc.emoji + '</div>' +
-        '<div style="flex:1"><div class="b">' + U.esc(d.name) + ' 該扣款了</div>' +
+        '<div style="flex:1"><div class="b">' + U.esc(d.name) + ' 該' + Repo.dueVerb(d) + '了</div>' +
         '<div class="tiny faint">' + U.fmtDayHeader(d.nextDueDate) + ' · ' + Repo.freqLabel(d) + (dues.length > 1 ? ' · 還有 ' + (dues.length - 1) + ' 筆待確認' : '') + '</div></div>' +
-        '<div class="money m-md">' + U.money(d.amount) + '</div></div>' +
+        '<div class="money m-md num ' + (Repo.isIncome(d) ? 'pos' : '') + '">' +
+        (Repo.isIncome(d) ? '+' : '') + U.money(d.amount) + '</div></div>' +
         '<div class="acts">' +
         '<button class="btn sm primary" data-act="due-ok" data-id="' + d.id + '">✅ 記一筆</button>' +
         '<button class="btn sm" data-act="due-edit" data-id="' + d.id + '">✏️ 改金額</button>' +

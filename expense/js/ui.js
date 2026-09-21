@@ -50,6 +50,10 @@ var UI = (function () {
       el: inner, mask: mask,
       close: function () { closeSheet(api); },
       setBody: function (html) { inner.querySelector('.sheet-body').innerHTML = html; },
+      setTitle: function (html) {
+        var t = inner.querySelector('.sheet-h .t');
+        if (t) t.innerHTML = html;
+      },
       body: function () { return inner.querySelector('.sheet-body'); }
     };
     api._onClose = cfg.onClose;

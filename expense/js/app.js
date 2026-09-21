@@ -73,15 +73,17 @@ var App = (function () {
     },
 
     'due-ok': function (d) {
+      var r = Repo.recurrings().filter(function (x) { return x.id === d.id; })[0];
       Repo.confirmDue(d.id);
       UI.haptic(20);
-      UI.toast('已記下這筆固定支出', '✅');
+      UI.toast('已記下這筆' + Repo.kindLabel(r), '✅');
       var na = Repo.takeNewAchievements();
       if (na.length) setTimeout(function () { Achieve.show(na); }, 500);
     },
     'due-edit': function (d) { Recur.editDueAmount(d.id); },
     'due-skip': function (d) {
-      UI.confirm({ emoji: '⏭', title: '跳過這次扣款？', text: '不會產生紀錄，下次到期時會再提醒你。', okText: '跳過' })
+      var r = Repo.recurrings().filter(function (x) { return x.id === d.id; })[0];
+      UI.confirm({ emoji: '⏭', title: '跳過這次' + Repo.dueVerb(r) + '？', text: '不會產生紀錄，下次到期時會再提醒你。', okText: '跳過' })
         .then(function (ok) { if (ok) { Repo.skipDue(d.id); UI.toast('已跳過', '⏭'); } });
     },
 

@@ -680,6 +680,52 @@ main { padding: 16px; max-width: 640px; margin: 0 auto; }
   margin-top: 6px;
 }
 
+/* ===== 慶祝動畫 ===== */
+.confetti-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 60;
+}
+.confetti-layer span {
+  position: absolute;
+  top: -36px;
+  animation: confetti-fall linear forwards;
+}
+@keyframes confetti-fall {
+  to {
+    transform: translateY(110vh) rotate(380deg);
+    opacity: 0.75;
+  }
+}
+.celebrate-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  animation: celebrate-fade 0.2s ease;
+}
+.celebrate-box {
+  background: var(--surface-1);
+  border-radius: 24px;
+  padding: 28px 34px;
+  text-align: center;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3);
+  animation: celebrate-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  max-width: 80vw;
+}
+.celebrate-emoji { font-size: 52px; line-height: 1.2; }
+.celebrate-title { font-size: 18px; font-weight: 800; margin-top: 10px; }
+.celebrate-sub { font-size: 13px; color: var(--text-secondary); margin-top: 5px; }
+@keyframes celebrate-fade { from { opacity: 0; } }
+@keyframes celebrate-pop {
+  from { transform: scale(0.6); opacity: 0; }
+}
+
 /* ===== 提示訊息 ===== */
 .toast {
   position: fixed;

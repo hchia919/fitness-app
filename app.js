@@ -16,6 +16,7 @@
     { name: '腹部', emoji: '🤸', cat: 'main' },
     { name: '臀腿', emoji: '🦵', cat: 'main' },
     { name: '胸', emoji: '🎽', cat: 'main' },
+    { name: '背', emoji: '🦾', cat: 'main' },
     { name: '瑜珈', emoji: '🧘', cat: 'main' },
     { name: '籃球', emoji: '⛹️', cat: 'main' },
     { name: '羽球', emoji: '🏸', cat: 'main' },
@@ -114,6 +115,10 @@
     '休息也是訓練的一部分 😌',
     '小步前進也是前進 👣',
     '你值得一個健康的自己 💖',
+    '不堅持也沒關係，回來就好 🌻',
+    '和昨天的自己比就夠了 🌈',
+    '動 10 分鐘也算數 ⏱️',
+    '每一次流汗都在偷偷變強 🌟',
   ];
 
   // 本週運動「天數」：同一天不論記幾筆都只算 1 次
@@ -167,19 +172,31 @@
     document.getElementById('home-week-min').textContent =
       weekWorkouts.reduce((s, r) => s + r.minutes, 0);
 
-    // 打氣語
+    // 打氣語（中斷不責備，回來就歡迎）
     const cheer = document.getElementById('cheer-line');
     const s = streak();
     const hasWorkoutToday = records.some((r) => isWorkout(r) && r.date === t);
     const hasStretchToday = records.some((r) => !isWorkout(r) && r.date === t);
+    const lastWorkout = records.filter(isWorkout).map((r) => r.date).sort().pop();
+    const gapDays = lastWorkout
+      ? Math.round(
+          (new Date(t + 'T00:00:00') - new Date(lastWorkout + 'T00:00:00')) / 86400000
+        )
+      : null;
     if (count >= goal) {
       cheer.textContent = '本週目標達成，你超棒的！🏆✨';
     } else if (hasWorkoutToday) {
       cheer.textContent = `今天已打卡！連續 ${s} 天，繼續保持 🔥`;
+    } else if (count === goal - 1) {
+      cheer.textContent = '再 1 天就達標了，就是今天！⚡';
     } else if (hasStretchToday) {
       cheer.textContent = '今天做了伸展，很好的照顧自己 🧘 要不要再動一下？';
     } else if (s > 0) {
       cheer.textContent = `已連續 ${s} 天，今天動一下就不中斷囉 🔥`;
+    } else if (gapDays !== null && gapDays >= 7) {
+      cheer.textContent = '好久不見！歡迎回來，重新開始的你最勇敢 🌟';
+    } else if (gapDays !== null && gapDays >= 2) {
+      cheer.textContent = '休息了幾天沒關係，今天回來就是勝利 💖';
     } else if (count > 0) {
       cheer.textContent = `本週還差 ${goal - count} 天，找個喜歡的運動吧 🌱`;
     } else {
@@ -435,13 +452,22 @@
       if (idx >= 0) records[idx] = { ...records[idx], ...data };
       toast('已更新 ✅');
     } else {
-      const before = weekCount();
+      const beforeCount = weekCount();
+      const beforeBadges = new Set(earnedBadgeNames());
       records.push({ id: Date.now(), ...data });
       const goal = loadGoal();
-      if (before < goal && weekCount() >= goal) {
-        toast('🎉 本週目標達成！你太強了！🏆');
-      } else {
+      const newBadge = BADGES.find(
+        (b) => !beforeBadges.has(b.name) && earnedBadgeNames().includes(b.name)
+      );
+      if (newBadge) {
+        bigCelebrate(newBadge.emoji, `解鎖成就：${newBadge.name}！`, newBadge.desc);
+      } else if (beforeCount < goal && weekCount() >= goal) {
+        bigCelebrate('🏆', '本週目標達成！', '這週的你超棒，給自己一個讚 ✨');
+      } else if (isWorkout(data)) {
+        confettiBurst(20);
         toast(praise());
+      } else {
+        toast('伸展完成，好好照顧自己 🧘');
       }
     }
     save();
@@ -877,6 +903,53 @@
       toast('已清除全部紀錄');
     }
   });
+
+  /* ---------- 慶祝動畫 ---------- */
+  const CONFETTI_EMOJIS = ['🎉', '✨', '💖', '🔥', '⭐', '🎊', '💪'];
+
+  function confettiBurst(n) {
+    const layer = document.createElement('div');
+    layer.className = 'confetti-layer';
+    for (let i = 0; i < n; i++) {
+      const s = document.createElement('span');
+      s.textContent = CONFETTI_EMOJIS[Math.floor(Math.random() * CONFETTI_EMOJIS.length)];
+      s.style.left = `${Math.random() * 100}%`;
+      s.style.fontSize = `${16 + Math.random() * 16}px`;
+      s.style.animationDelay = `${Math.random() * 0.4}s`;
+      s.style.animationDuration = `${1.3 + Math.random() * 0.9}s`;
+      layer.appendChild(s);
+    }
+    document.body.appendChild(layer);
+    setTimeout(() => layer.remove(), 2800);
+  }
+
+  function bigCelebrate(emoji, title, sub) {
+    confettiBurst(34);
+    const overlay = document.createElement('div');
+    overlay.className = 'celebrate-overlay';
+    overlay.innerHTML = `
+      <div class="celebrate-box">
+        <div class="celebrate-emoji"></div>
+        <div class="celebrate-title"></div>
+        <div class="celebrate-sub"></div>
+      </div>`;
+    overlay.querySelector('.celebrate-emoji').textContent = emoji;
+    overlay.querySelector('.celebrate-title').textContent = title;
+    overlay.querySelector('.celebrate-sub').textContent = sub;
+    overlay.addEventListener('click', () => overlay.remove());
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.remove(), 3200);
+  }
+
+  function earnedBadgeNames() {
+    const workouts = records.filter(isWorkout);
+    const stats = {
+      totalDays: new Set(workouts.map((r) => r.date)).size,
+      totalMinutes: workouts.reduce((s, r) => s + r.minutes, 0),
+      maxStreak: maxStreak(),
+    };
+    return BADGES.filter((b) => b.earned(stats)).map((b) => b.name);
+  }
 
   /* ---------- 提示訊息 ---------- */
   let toastTimer = null;

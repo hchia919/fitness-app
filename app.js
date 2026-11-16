@@ -45,6 +45,7 @@
       // 舊資料相容：單一 type 轉為 types 陣列
       return data.map((r) => ({
         ...r,
+        minutes: Number(r.minutes) || 0,
         types: Array.isArray(r.types) && r.types.length ? r.types : r.type ? [r.type] : ['其他'],
       }));
     } catch {
@@ -277,7 +278,8 @@
     if (stretches.length) {
       const p = document.createElement('p');
       p.className = 'today-done today-recover';
-      p.textContent = `伸展 ${stretches.reduce((s, r) => s + r.minutes, 0)} 分鐘 🧘`;
+      const stretchMin = stretches.reduce((s, r) => s + r.minutes, 0);
+      p.textContent = stretchMin ? `伸展 ${stretchMin} 分鐘 🧘` : '做了伸展，好好放鬆 🧘';
       box.appendChild(p);
     }
   }
@@ -307,14 +309,15 @@
       const title = document.createElement('h3');
       title.textContent = dateLabel(date);
       const sub = document.createElement('span');
-      sub.textContent = `共 ${dayTotal} 分鐘`;
+      sub.textContent = dayTotal ? `共 ${dayTotal} 分鐘` : '';
       heading.appendChild(title);
       heading.appendChild(sub);
       group.appendChild(heading);
 
       for (const r of items) {
         const types = r.types || ['其他'];
-        const meta = [`⏱️ ${r.minutes} 分`];
+        const meta = [];
+        if (r.minutes) meta.push(`⏱️ ${r.minutes} 分`);
         if (r.distance) meta.push(`🗺️ ${r.distance} km`);
         if (r.calories) meta.push(`🔥 ${r.calories} 大卡`);
         if (r.intensity) meta.push(`${INTENSITY_EMOJI[r.intensity] || ''} ${r.intensity}`.trim());
@@ -402,6 +405,19 @@
   });
   const typeBoxes = () => [...typePicker.querySelectorAll('input[type="checkbox"]')];
 
+  // 純拉伸時，時間改為選填（自己隨意拉不一定有計時）
+  function updateMinutesField() {
+    const sel = typeBoxes().filter((b) => b.checked).map((b) => b.value);
+    const onlyRecovery = sel.length > 0 && sel.every(isRecoveryType);
+    const minutes = form.elements.minutes;
+    minutes.required = !onlyRecovery;
+    minutes.placeholder = onlyRecovery ? '選填' : '30';
+    document.getElementById('minutes-label').textContent = onlyRecovery
+      ? '⏱️ 時間（分鐘，選填）'
+      : '⏱️ 時間（分鐘）';
+  }
+  typePicker.addEventListener('change', updateMinutesField);
+
   function openForm(record) {
     editingId = record ? record.id : null;
     formTitle.textContent = record ? '✏️ 編輯紀錄' : '✨ 新增紀錄';
@@ -411,8 +427,9 @@
     typeBoxes().forEach((box) => {
       box.checked = selected.includes(box.value);
     });
+    updateMinutesField();
     if (record) {
-      form.elements.minutes.value = record.minutes;
+      form.elements.minutes.value = record.minutes || '';
       form.elements.distance.value = record.distance ?? '';
       form.elements.calories.value = record.calories ?? '';
       form.elements.intensity.value = record.intensity || '適中';
@@ -438,10 +455,16 @@
       toast('請至少勾選一種運動類型 🙏');
       return;
     }
+    const onlyRecovery = types.every(isRecoveryType);
+    const minutes = f.minutes.value ? Number(f.minutes.value) : 0;
+    if (!onlyRecovery && !(minutes > 0)) {
+      toast('請填寫運動時間 🙏');
+      return;
+    }
     const data = {
       date: f.date.value,
       types,
-      minutes: Number(f.minutes.value),
+      minutes,
       distance: f.distance.value ? Number(f.distance.value) : null,
       calories: f.calories.value ? Number(f.calories.value) : null,
       intensity: f.intensity.value,
@@ -577,7 +600,8 @@
 
     for (const r of items) {
       const types = r.types || ['其他'];
-      const meta = [`⏱️ ${r.minutes} 分`];
+      const meta = [];
+      if (r.minutes) meta.push(`⏱️ ${r.minutes} 分`);
       if (r.distance) meta.push(`🗺️ ${r.distance} km`);
       if (r.calories) meta.push(`🔥 ${r.calories} 大卡`);
       if (r.intensity) meta.push(`${INTENSITY_EMOJI[r.intensity] || ''} ${r.intensity}`.trim());
@@ -869,20 +893,26 @@
     try {
       const data = JSON.parse(await file.text());
       if (!Array.isArray(data)) throw new Error();
-      const valid = data.filter(
-        (r) =>
-          r &&
-          typeof r.date === 'string' &&
-          (typeof r.type === 'string' || Array.isArray(r.types)) &&
-          r.minutes > 0
-      );
+      const valid = data.filter((r) => {
+        if (!r || typeof r.date !== 'string') return false;
+        const types =
+          Array.isArray(r.types) && r.types.length ? r.types : r.type ? [r.type] : null;
+        if (!types) return false;
+        // 純伸展可以沒有時間；運動必須有時間
+        return r.minutes > 0 || types.every(isRecoveryType);
+      });
       const existing = new Set(records.map((r) => r.id));
       let added = 0;
       valid.forEach((r) => {
         if (!existing.has(r.id)) {
           const types =
             Array.isArray(r.types) && r.types.length ? r.types : r.type ? [r.type] : ['其他'];
-          records.push({ ...r, types, id: r.id ?? Date.now() + added });
+          records.push({
+            ...r,
+            types,
+            minutes: Number(r.minutes) || 0,
+            id: r.id ?? Date.now() + added,
+          });
           added++;
         }
       });

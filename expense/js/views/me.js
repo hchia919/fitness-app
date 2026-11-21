@@ -126,11 +126,11 @@ var Me = (function () {
   }
 
   function exportCSV() {
-    var rows = [['日期', '收支', '金額', '類別', '付款方式', '備註', '來自週期']];
+    var rows = [['日期', '收支', '金額', '類別', '細項', '付款方式', '備註', '來自週期']];
     Repo.txs().slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }).forEach(function (t) {
       rows.push([
         t.date, t.type === 'income' ? '收入' : '支出', t.amount,
-        Repo.cat(t.categoryId).name, Repo.pay(t.paymentMethodId).name,
+        Repo.cat(t.categoryId).name, Repo.subName(t), Repo.pay(t.paymentMethodId).name,
         t.note || '', t.recurringId ? '是' : ''
       ]);
     });

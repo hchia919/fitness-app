@@ -33,6 +33,7 @@ var Repo = (function () {
       type: t.type === 'income' ? 'income' : 'expense',
       amount: Math.round((Number(t.amount) || 0) * 100) / 100,
       categoryId: t.categoryId,
+      subId: t.subId || null,
       paymentMethodId: t.paymentMethodId || null,
       date: t.date || U.today(),
       note: (t.note || '').trim(),
@@ -42,7 +43,13 @@ var Repo = (function () {
     Store.mutate(function (s) {
       s.transactions.push(tx);
       var c = s.categories.filter(function (x) { return x.id === tx.categoryId; })[0];
-      if (c) c.usageCount = (c.usageCount || 0) + 1;
+      if (c) {
+        c.usageCount = (c.usageCount || 0) + 1;
+        if (tx.subId) {
+          var sb = (c.subs || []).filter(function (x) { return x.id === tx.subId; })[0];
+          if (sb) sb.usageCount = (sb.usageCount || 0) + 1;
+        }
+      }
       if (tx.paymentMethodId) s.settings.lastPaymentId = tx.paymentMethodId;
       refreshStreak(s);
       checkAchievements(s);
@@ -56,6 +63,11 @@ var Repo = (function () {
       if (!t) return;
       if (patch.amount != null) patch.amount = Math.round(Number(patch.amount) * 100) / 100;
       Object.assign(t, patch, { updatedAt: new Date().toISOString() });
+      if (t.subId) {                       /* 細項必須屬於目前的類別 */
+        var cc = s.categories.filter(function (x) { return x.id === t.categoryId; })[0];
+        var ok = cc && (cc.subs || []).some(function (x) { return x.id === t.subId; });
+        if (!ok) t.subId = null;
+      }
       if (t.paymentMethodId) s.settings.lastPaymentId = t.paymentMethodId;
       refreshStreak(s);
     });
@@ -92,8 +104,12 @@ var Repo = (function () {
     var used = txs().filter(function (t) { return t.categoryId === id; }).length;
     Store.mutate(function (s) {
       if (used && moveToId) {
-        s.transactions.forEach(function (t) { if (t.categoryId === id) t.categoryId = moveToId; });
-        s.recurrings.forEach(function (r) { if (r.categoryId === id) r.categoryId = moveToId; });
+        s.transactions.forEach(function (t) {
+          if (t.categoryId === id) { t.categoryId = moveToId; t.subId = null; }
+        });
+        s.recurrings.forEach(function (r) {
+          if (r.categoryId === id) { r.categoryId = moveToId; r.subId = null; }
+        });
       }
       if (used && !moveToId) {
         var c = s.categories.filter(function (x) { return x.id === id; })[0];
@@ -109,6 +125,76 @@ var Repo = (function () {
   }
   function countTxOfCat(id) {
     return txs().filter(function (t) { return t.categoryId === id; }).length;
+  }
+
+
+  /* ---------- 細項（類別的第二層） ---------- */
+  function subsOf(catId, withArchived) {
+    var c = Store.get().categories.filter(function (x) { return x.id === catId; })[0];
+    if (!c || !Array.isArray(c.subs)) return [];
+    return c.subs.filter(function (x) { return withArchived || !x.isArchived; })
+      .sort(function (a, b) { return a.order - b.order; });
+  }
+  function sub(catId, subId) {
+    if (!subId) return null;
+    var c = Store.get().categories.filter(function (x) { return x.id === catId; })[0];
+    if (!c) return null;
+    return (c.subs || []).filter(function (x) { return x.id === subId; })[0] || null;
+  }
+  /* 交易上的細項名稱（找不到就回空字串） */
+  function subName(t) {
+    var sb = t && sub(t.categoryId, t.subId);
+    return sb ? sb.name : '';
+  }
+  function addSub(catId, name) {
+    name = String(name || '').trim();
+    if (!name) return null;
+    var id = U.uid('sub');
+    Store.mutate(function (s) {
+      var c = s.categories.filter(function (x) { return x.id === catId; })[0];
+      if (!c) return;
+      if (!Array.isArray(c.subs)) c.subs = [];
+      var dup = c.subs.filter(function (x) { return x.name === name; })[0];
+      if (dup) { dup.isArchived = false; id = dup.id; return; }
+      var max = c.subs.reduce(function (m, x) { return Math.max(m, x.order || 0); }, -1);
+      c.subs.push({ id: id, name: name, order: max + 1, isArchived: false, usageCount: 0 });
+    });
+    return id;
+  }
+  function updateSub(catId, subId, patch) {
+    Store.mutate(function (s) {
+      var c = s.categories.filter(function (x) { return x.id === catId; })[0];
+      if (!c) return;
+      var sb = (c.subs || []).filter(function (x) { return x.id === subId; })[0];
+      if (sb) Object.assign(sb, patch);
+    });
+  }
+  /* 刪除細項：用到的交易改回「只有大類別」，不會變成孤兒 */
+  function deleteSub(catId, subId) {
+    var used = txs().filter(function (t) { return t.subId === subId; }).length;
+    Store.mutate(function (s) {
+      var c = s.categories.filter(function (x) { return x.id === catId; })[0];
+      if (!c) return;
+      c.subs = (c.subs || []).filter(function (x) { return x.id !== subId; });
+      s.transactions.forEach(function (t) { if (t.subId === subId) t.subId = null; });
+      s.recurrings.forEach(function (r) { if (r.subId === subId) r.subId = null; });
+    });
+    return used;
+  }
+  function countTxOfSub(subId) {
+    return txs().filter(function (t) { return t.subId === subId; }).length;
+  }
+  function moveSub(catId, subId, dir) {
+    Store.mutate(function (s) {
+      var c = s.categories.filter(function (x) { return x.id === catId; })[0];
+      if (!c) return;
+      var list = (c.subs || []).filter(function (x) { return !x.isArchived; })
+        .sort(function (a, b) { return a.order - b.order; });
+      var i = list.findIndex(function (x) { return x.id === subId; });
+      var j = i + dir;
+      if (i < 0 || j < 0 || j >= list.length) return;
+      var o = list[i].order; list[i].order = list[j].order; list[j].order = o;
+    });
   }
 
   /* ---------- 付款方式 ---------- */
@@ -184,6 +270,7 @@ var Repo = (function () {
         type: r.type === 'income' ? 'income' : 'expense',
         amount: Math.round((Number(r.amount) || 0) * 100) / 100,
         categoryId: r.categoryId,
+        subId: r.subId || null,
         paymentMethodId: r.paymentMethodId || s.settings.lastPaymentId,
         freq: freq,
         startDate: start,
@@ -247,6 +334,7 @@ var Repo = (function () {
       type: r.type,
       amount: amountOverride != null ? amountOverride : r.amount,
       categoryId: r.categoryId,
+      subId: r.subId || null,
       paymentMethodId: r.paymentMethodId,
       date: due,
       note: r.name,
@@ -377,6 +465,8 @@ var Repo = (function () {
     txs: txs, cats: cats, cat: cat, pays: pays, pay: pay, recurrings: recurrings, settings: settings,
     addTx: addTx, updateTx: updateTx, deleteTx: deleteTx,
     addCat: addCat, updateCat: updateCat, deleteCat: deleteCat, countTxOfCat: countTxOfCat,
+    subsOf: subsOf, sub: sub, subName: subName, addSub: addSub, updateSub: updateSub,
+    deleteSub: deleteSub, countTxOfSub: countTxOfSub, moveSub: moveSub,
     addPay: addPay, updatePay: updatePay, deletePay: deletePay,
     budgetFor: budgetFor, setBudget: setBudget, clearBudget: clearBudget,
     addRecurring: addRecurring, updateRecurring: updateRecurring, deleteRecurring: deleteRecurring,

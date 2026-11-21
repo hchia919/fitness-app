@@ -1,26 +1,49 @@
 /* ── 資料模型、預設資料、版本遷移 ─────────────────────── */
 var Schema = (function () {
-  var VERSION = 1;
+  var VERSION = 2;
 
+  /* subs = 細項（第二層），記帳時可選可不選 */
   var DEFAULT_CATEGORIES = [
-    { name: '飲食', emoji: '🍚', color: '#FF8A65', type: 'expense' },
-    { name: '咖啡', emoji: '☕', color: '#A1887F', type: 'expense' },
-    { name: '購物', emoji: '🛍️', color: '#F48FB1', type: 'expense' },
-    { name: '交通', emoji: '🚗', color: '#64B5F6', type: 'expense' },
-    { name: '居住', emoji: '🏠', color: '#7986CB', type: 'expense' },
-    { name: '醫療', emoji: '💊', color: '#4DD0A7', type: 'expense' },
-    { name: '娛樂', emoji: '🎮', color: '#9B8CFF', type: 'expense' },
-    { name: '旅遊', emoji: '✈️', color: '#4DD0E1', type: 'expense' },
-    { name: '育兒', emoji: '👦🏻', color: '#FFB74D', type: 'expense' },
-    { name: '菸彈', emoji: '🚬', color: '#90A4AE', type: 'expense' },
-    { name: '訂閱', emoji: '📺', color: '#BA68C8', type: 'expense' },
-    { name: '保險', emoji: '🛡️', color: '#4FC3F7', type: 'expense' },
-    { name: '其他', emoji: '📦', color: '#BDBDBD', type: 'expense' },
-    { name: '薪資', emoji: '💰', color: '#66BB6A', type: 'income' },
-    { name: '獎金', emoji: '🎁', color: '#26A69A', type: 'income' },
-    { name: '投資', emoji: '📈', color: '#42A5F5', type: 'income' },
-    { name: '其他收入', emoji: '🧾', color: '#9CCC65', type: 'income' }
+    { name: '飲食', emoji: '🍚', color: '#FF8A65', type: 'expense',
+      subs: ['早餐', '午餐', '晚餐', '宵夜', '點心', '飲料', '外送', '食材'] },
+    { name: '咖啡', emoji: '☕', color: '#A1887F', type: 'expense',
+      subs: ['超商咖啡', '連鎖咖啡', '獨立咖啡廳', '手搖飲'] },
+    { name: '購物', emoji: '🛍️', color: '#F48FB1', type: 'expense',
+      subs: ['衣物', '鞋包', '美妝', '日用品', '3C', '家電', '網購'] },
+    { name: '交通', emoji: '🚗', color: '#64B5F6', type: 'expense',
+      subs: ['公車', '捷運', '計程車', '火車', '高鐵', '加油', '停車', '過路費'] },
+    { name: '居住', emoji: '🏠', color: '#7986CB', type: 'expense',
+      subs: ['房租', '房貸', '水費', '電費', '瓦斯', '網路', '管理費', '修繕'] },
+    { name: '醫療', emoji: '💊', color: '#4DD0A7', type: 'expense',
+      subs: ['看診', '藥品', '牙醫', '健檢', '保健食品', '眼鏡'] },
+    { name: '娛樂', emoji: '🎮', color: '#9B8CFF', type: 'expense',
+      subs: ['電影', '遊戲', 'KTV', '展覽', '運動', '書籍'] },
+    { name: '旅遊', emoji: '✈️', color: '#4DD0E1', type: 'expense',
+      subs: ['機票', '住宿', '當地交通', '門票', '伴手禮', '旅遊餐飲'] },
+    { name: '育兒', emoji: '👦🏻', color: '#FFB74D', type: 'expense',
+      subs: ['尿布', '奶粉', '副食品', '玩具', '童裝', '保母', '學費'] },
+    { name: '菸彈', emoji: '🚬', color: '#90A4AE', type: 'expense',
+      subs: ['菸彈', '主機', '配件'] },
+    { name: '訂閱', emoji: '📺', color: '#BA68C8', type: 'expense',
+      subs: ['影音', '音樂', '雲端', '軟體', '會員'] },
+    { name: '保險', emoji: '🛡️', color: '#4FC3F7', type: 'expense',
+      subs: ['壽險', '醫療險', '意外險', '車險', '旅平險'] },
+    { name: '其他', emoji: '📦', color: '#BDBDBD', type: 'expense', subs: [] },
+    { name: '薪資', emoji: '💰', color: '#66BB6A', type: 'income',
+      subs: ['本薪', '加班費', '津貼', '兼職'] },
+    { name: '獎金', emoji: '🎁', color: '#26A69A', type: 'income',
+      subs: ['年終', '績效', '紅包'] },
+    { name: '投資', emoji: '📈', color: '#42A5F5', type: 'income',
+      subs: ['股利', '利息', '價差', '租金收入'] },
+    { name: '其他收入', emoji: '🧾', color: '#9CCC65', type: 'income',
+      subs: ['退款', '補助', '二手賣出', '中獎'] }
   ];
+
+  function buildSubs(names, catId) {
+    return (names || []).map(function (n, i) {
+      return { id: catId + '_s' + i, name: n, order: i, isArchived: false, usageCount: 0 };
+    });
+  }
 
   var DEFAULT_PAYMENTS = [
     { name: '現金', emoji: '💵', kind: 'cash' },
@@ -50,7 +73,7 @@ var Schema = (function () {
       return {
         id: 'cat_' + i, name: c.name, emoji: c.emoji, color: c.color,
         type: c.type, order: i, isArchived: false, isSystem: c.name === '其他',
-        usageCount: 0
+        usageCount: 0, subs: buildSubs(c.subs, 'cat_' + i)
       };
     });
     var pays = DEFAULT_PAYMENTS.map(function (p, i) {
@@ -99,6 +122,19 @@ var Schema = (function () {
       if (c.usageCount == null) c.usageCount = 0;
       if (!c.type) c.type = 'expense';
       if (c.isArchived == null) c.isArchived = false;
+
+      /* v2：補上細項。預設類別第一次升級時帶入內建清單，自訂類別給空陣列 */
+      if (!Array.isArray(c.subs)) {
+        var m = /^cat_(\d+)$/.exec(c.id);
+        var def = m && DEFAULT_CATEGORIES[Number(m[1])];
+        c.subs = def ? buildSubs(def.subs, c.id) : [];
+      }
+      c.subs.forEach(function (sub, j) {
+        if (!sub.id) sub.id = c.id + '_s' + j + '_' + j;
+        if (sub.order == null) sub.order = j;
+        if (sub.usageCount == null) sub.usageCount = 0;
+        if (sub.isArchived == null) sub.isArchived = false;
+      });
     });
 
     data.schemaVersion = VERSION;
@@ -107,7 +143,7 @@ var Schema = (function () {
   }
 
   return {
-    VERSION: VERSION, blank: blank, migrate: migrate,
+    VERSION: VERSION, blank: blank, migrate: migrate, buildSubs: buildSubs,
     ACHIEVEMENTS: ACHIEVEMENTS,
     DEFAULT_CATEGORIES: DEFAULT_CATEGORIES
   };

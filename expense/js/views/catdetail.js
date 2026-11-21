@@ -58,6 +58,19 @@ var CatDetail = (function () {
     h += '<div class="card"><div class="card-h"><span>📊</span><span class="t">分佈</span></div>' +
       Charts.bars(series, { height: 88, color: c.color }) + '</div>';
 
+    /* 細項分佈（飲食 → 早餐／午餐／晚餐…） */
+    var bs = Q.bySubcategory(p, curId, null);
+    if (bs.rows.length > 1 || (bs.rows.length === 1 && bs.rows[0].id)) {
+      h += '<div class="card"><div class="card-h"><span>🧩</span><span class="t">細項分佈</span>' +
+        '<span class="spacer"></span><button class="more" data-act="edit-cat" data-id="' + curId + '">✏️ 管理細項</button></div>' +
+        bs.rows.map(function (r) {
+          return '<div class="budget-row"><div class="top">' +
+            '<span class="n">' + U.esc(r.name) + '<span class="tiny faint">　' + r.count + ' 筆</span></span>' +
+            '<span class="v num">' + U.money(r.amount) + '　' + r.pct.toFixed(0) + '%</span></div>' +
+            '<div class="bar thin"><i style="width:' + r.pct + '%;background:' + (r.id ? c.color : 'var(--line-2)') + '"></i></div></div>';
+        }).join('') + '</div>';
+    }
+
     /* 備註排行（例如搜尋「星巴克」的效果） */
     var byNote = {};
     items.forEach(function (t) {

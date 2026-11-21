@@ -86,14 +86,46 @@ var Manage = (function () {
     catForm(id, JSON.parse(JSON.stringify(c)), cb);
   }
 
+
+  /* 類別底下的細項管理 */
+  function subsSection(catId) {
+    var subs = Repo.subsOf(catId, true);
+    var h = '<div class="field"><span class="label">細項（記帳時可選，也可以略過）</span>';
+    h += '<div class="card" style="padding:4px 14px;margin-bottom:0">';
+    if (!subs.length) {
+      h += '<div class="tiny faint" style="padding:10px 0">還沒有細項。加了之後，記帳選到這個類別時就會出現一排可以點。</div>';
+    } else {
+      h += subs.map(function (sb, i) {
+        return '<div class="subedit">' +
+          '<input class="input n" data-subname="' + sb.id + '" data-keep="sub-' + sb.id + '" value="' + U.esc(sb.name) +
+          '" maxlength="12" style="padding:7px 10px;box-shadow:none;background:var(--bg-soft)">' +
+          '<span class="c">' + Repo.countTxOfSub(sb.id) + ' 筆</span>' +
+          '<button class="iconbtn" style="width:28px;height:28px;font-size:12px" data-subup="' + sb.id + '" ' + (i === 0 ? 'disabled' : '') + '>↑</button>' +
+          '<button class="iconbtn" style="width:28px;height:28px;font-size:12px" data-subdn="' + sb.id + '" ' + (i === subs.length - 1 ? 'disabled' : '') + '>↓</button>' +
+          '<button class="iconbtn" style="width:28px;height:28px;font-size:12px" data-subdel="' + sb.id + '">✕</button>' +
+          '</div>';
+      }).join('');
+    }
+    h += '</div>';
+    h += '<div style="display:flex;gap:8px;margin-top:8px">' +
+      '<input class="input" data-keep="sub-new" id="sub-new" placeholder="新增細項，例：早餐、公車" maxlength="12" style="flex:1">' +
+      '<button class="btn sm" data-subadd>新增</button></div>';
+    return h + '</div>';
+  }
+
   function catForm(id, d, cb) {
-    var api = UI.sheet({ title: id ? '編輯類別' : '新增類別', body: body(), onMount: bind });
+    var api = UI.sheet({
+      title: id ? '編輯類別' : '新增類別', body: body(), onMount: bind,
+      onClose: function () { if (id && cb) cb(); }     /* 細項可能被改過，讓呼叫端重繪 */
+    });
 
     function body() {
       var h = '<div style="text-align:center;margin-bottom:12px">' +
         '<div class="ava" style="width:64px;height:64px;border-radius:21px;display:inline-grid;place-items:center;font-size:32px;background:' + U.tint(d.color, .18) + '">' + d.emoji + '</div></div>';
       h += '<div class="field"><span class="label">名稱</span>' +
         '<input class="input" data-keep="cat-name" data-cf="name" placeholder="類別名稱" value="' + U.esc(d.name) + '"></div>';
+      if (id) h += subsSection(id);
+      else h += '<div class="insight"><span class="e">🧩</span><span>建立之後再打開這個類別，就能加「細項」（例如飲食底下的早餐、午餐）。</span></div>';
       h += '<div class="field"><span class="label">圖示</span>' +
         '<div class="catgrid" style="grid-template-columns:repeat(8,1fr);max-height:132px;overflow-y:auto">' +
         EMOJIS.map(function (e) {
@@ -129,14 +161,48 @@ var Manage = (function () {
         if (t.dataset.cemoji) { d.emoji = t.dataset.cemoji; return repaint(); }
         if (t.dataset.ccolor) { d.color = t.dataset.ccolor; return repaint(); }
         if (t.dataset.ctype) { d.type = t.dataset.ctype; return repaint(); }
+        if (t.hasAttribute('data-subadd')) {
+          var inp = a.el.querySelector('#sub-new');
+          if (!Repo.addSub(id, inp.value)) { UI.toast('先輸入名稱', '✏️'); return; }
+          inp.value = ''; UI.toast('細項加好了', '🏷️'); return repaint();
+        }
+        if (t.dataset.subup) { Repo.moveSub(id, t.dataset.subup, -1); return repaint(); }
+        if (t.dataset.subdn) { Repo.moveSub(id, t.dataset.subdn, 1); return repaint(); }
+        if (t.dataset.subdel) return delSub(t.dataset.subdel);
         if (t.hasAttribute('data-csave')) return save();
         if (t.hasAttribute('data-cdel')) return remove();
         if (t.hasAttribute('data-cunarch')) { Repo.updateCat(id, { isArchived: false }); a.close(); if (cb) cb(); return; }
       };
       a.el.oninput = function (e) {
         var k = e.target.dataset.cf;
-        if (k) d[k] = e.target.value;
+        if (k) { d[k] = e.target.value; return; }
+        if (e.target.dataset.subname) {
+          var name = e.target.value.trim();
+          if (name) Repo.updateSub(id, e.target.dataset.subname, { name: name });
+        }
       };
+      var ni = a.el.querySelector('#sub-new');
+      if (ni) ni.onkeydown = function (e) {
+        if (e.key !== 'Enter') return;
+        if (!Repo.addSub(id, ni.value)) return;
+        ni.value = ''; UI.toast('細項加好了', '🏷️'); repaint();
+      };
+    }
+
+    function delSub(subId) {
+      var sb = Repo.sub(id, subId);
+      var used = Repo.countTxOfSub(subId);
+      UI.confirm({
+        emoji: '🗑', title: '刪除細項「' + U.esc(sb ? sb.name : '') + '」？',
+        text: used ? '已經記下的 <b>' + used + ' 筆</b>不會消失，只會變回只有大類別。' : '',
+        okText: '刪除', danger: true
+      }).then(function (ok) {
+        if (!ok) return;
+        Repo.deleteSub(id, subId);
+        UI.toast('已刪除', '🗑');
+        repaint();
+        if (cb) cb();
+      });
     }
     function save() {
       if (!String(d.name).trim()) { UI.toast('取個名字吧', '✏️'); return; }

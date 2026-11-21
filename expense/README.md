@@ -27,8 +27,10 @@
 - 自製數字鍵盤，支援 `＋` 連加（60 ＋ 40 → 100）
 - 預設今天／支出／上次用的付款方式，打開就能輸入
 - 類別可依「常用優先」自動排序（也可切換成自訂順序）
+- **細項（第二層）**：選到飲食就跳出早餐／午餐／晚餐／點心…，選到交通就跳出
+  公車／捷運／計程車／加油…，一次觸碰選好。**可以完全略過**，不想分就不分
 - **長按類別**就能直接改名稱、換 emoji、換顏色或刪除，不用跑去設定頁；
-  旁邊的「✏️ 管理類別」可以新增、排序、封存
+  類別格最後的「✏️ 管理」可以新增類別、排序、封存，以及編輯每個類別的細項
 - 類別格會依你手機的螢幕高度**自動只顯示完整的整排**，不會切一半
 - 數字鍵盤固定在下方，**任何尺寸的手機都看得到「完成」**
 - **一鍵重複記帳**：自動學習你最常記的組合（例：`☕星巴克 $95`），1 次觸碰完成
@@ -47,7 +49,7 @@
 - `本週｜本月｜本季｜今年` 自由切換，可往前翻上一期
 - 與上一期比較、甜甜圈圖、柱狀圖、類別排行（含增減）、付款方式佔比
 - **會說人話的洞察**：「購物比上個月多了 $796，是增加最多的類別」
-- 點類別 → 該類別明細、分佈、「花在哪些地方」排行
+- 點類別 → 該類別明細、**細項分佈**（飲食裡早餐／午餐各花多少）、「花在哪些地方」排行
 
 ### 預算 🎯
 總預算 + 分類預算，可設定「每月沿用」。
@@ -93,10 +95,11 @@ python3 -m http.server 8000
 ## 資料結構
 
 ```js
-Transaction     { id, type, amount, categoryId, paymentMethodId, date, note, recurringId, createdAt, updatedAt }
-Category        { id, name, emoji, color, type, order, isArchived, isSystem, usageCount }
+Transaction     { id, type, amount, categoryId, subId, paymentMethodId, date, note, recurringId, createdAt, updatedAt }
+Category        { id, name, emoji, color, type, order, isArchived, isSystem, usageCount,
+                  subs: [ { id, name, order, isArchived, usageCount } ] }   // 細項（第二層）
 PaymentMethod   { id, name, emoji, kind, isArchived }
-RecurringExpense{ id, name, type, amount, categoryId, paymentMethodId,
+RecurringExpense{ id, name, type, amount, categoryId, subId, paymentMethodId,
                   freq:{unit, interval, dayOfMonth, weekday},
                   startDate, endDate, nextDueDate, autoPost, isActive, note, lastPostedDate }
 Budget          budgets['YYYY-MM' | 'default'] = { total, categories:{ [categoryId]: amount } }
@@ -105,6 +108,7 @@ Settings        { currency, monthStartDay, weekStartsOn, theme, catSort,
 ```
 
 刪除類別時若已有紀錄，會讓你選「封存」或「搬到其他類別」，**舊紀錄不會變成孤兒**。
+刪除細項時，已記下的交易只會變回「只有大類別」，金額與日期都不受影響。
 `schemaVersion` + `Schema.migrate()` 讓未來加欄位不會弄壞舊資料。
 
 ---

@@ -24,6 +24,7 @@ var Entry = (function () {
       buf: tx ? String(tx.amount) : '',
       acc: [],
       categoryId: tx ? tx.categoryId : (opts.categoryId || null),
+      subId: tx ? (tx.subId || null) : (opts.subId || null),
       paymentMethodId: tx ? tx.paymentMethodId : (opts.paymentMethodId || Repo.settings().lastPaymentId),
       date: tx ? tx.date : (opts.date || U.today()),
       note: tx ? tx.note : (opts.note || ''),
@@ -107,7 +108,7 @@ var Entry = (function () {
         var c = Repo.cat(t.categoryId);
         return '<button class="quickpill" data-combo="' + i + '">' +
           '<span class="e">' + c.emoji + '</span>' +
-          '<span>' + U.esc(t.note || c.name) + '</span>' +
+          '<span>' + U.esc(t.note || Repo.subName(t) || c.name) + '</span>' +
           '<span class="a">' + U.money(t.amount) + '</span></button>';
       }).join('') + '</div>';
     }
@@ -123,15 +124,13 @@ var Entry = (function () {
       '<div class="amount-expr num" data-expr>' + exprText() + '</div>';
 
     /* 類別 */
-    h += '<div class="cathint">' +
-      '<span class="tiny faint">長按類別可改名稱／圖示</span>' +
-      '<button class="more" data-managecats>✏️ 管理類別</button></div>';
-    h += '<div class="catgrid" style="margin:2px 0 4px;max-height:172px;overflow-y:auto;scroll-snap-type:y proximity">' +
+    h += '<div class="catgrid" style="margin:8px 0 2px;max-height:172px;overflow-y:auto;scroll-snap-type:y proximity">' +
       cats.map(function (c) {
         return '<button class="catcell ' + (c.id === st.categoryId ? 'on' : '') + '" data-cat="' + c.id + '">' +
           '<span class="e">' + c.emoji + '</span><span class="n">' + U.esc(c.name) + '</span></button>';
       }).join('') +
       '<button class="catcell" data-newcat><span class="e">➕</span><span class="n">新類別</span></button>' +
+      '<button class="catcell" data-managecats><span class="e">✏️</span><span class="n">管理</span></button>' +
       '</div>';
 
     /* 日期／付款／備註（可選，不擋路） */
@@ -154,7 +153,11 @@ var Entry = (function () {
 
 
     h += '</div></div><div class="entry-foot">';
-    h += '<button class="chip" data-toggle-more style="width:100%;text-align:center;margin:6px 0 2px;background:transparent;color:var(--text-3)">' +
+
+    /* 細項（可略過）：選了類別之後才有意義，一次觸碰就選好 */
+    h += subRow();
+
+    h += '<button class="chip" data-toggle-more style="width:100%;text-align:center;margin:3px 0 0;background:transparent;color:var(--text-3)">' +
       (st.showMore ? '收合 ▴' : U.fmtDate(st.date) + ' · ' + Repo.pay(st.paymentMethodId).name + (st.note ? ' · ' + U.esc(st.note) : '') + '  ▾') + '</button>';
 
     /* 數字鍵盤固定在下方，永遠看得到「完成」 */
@@ -174,12 +177,59 @@ var Entry = (function () {
   function key(k) { return '<button class="key num" data-k="' + k + '">' + k + '</button>'; }
   function opKey(k, label) { return '<button class="key op" data-k="' + k + '">' + label + '</button>'; }
 
+
+  /* 細項列。永遠存在（沒有細項時顯示新增入口），版面高度才不會跳 */
+  function subRow() {
+    var subs = st.categoryId ? Repo.subsOf(st.categoryId) : [];
+    var c = st.categoryId ? Repo.cat(st.categoryId) : null;
+    var h = '<div class="subrow">';
+    if (!subs.length) {
+      h += '<button class="chip subadd" data-newsub>＋ 幫「' + U.esc(c ? c.name : '') + '」加細項</button>';
+    } else {
+      h += subs.map(function (sb) {
+        return '<button class="chip ' + (sb.id === st.subId ? 'on' : '') + '" data-sub="' + sb.id + '">' +
+          U.esc(sb.name) + '</button>';
+      }).join('');
+      h += '<button class="chip subadd" data-newsub>＋</button>';
+    }
+    return h + '</div>';
+  }
+
+  /* 現場新增細項並直接選起來 */
+  function newSubSheet() {
+    if (!st.categoryId) return;
+    var c = Repo.cat(st.categoryId);
+    var catId = st.categoryId;
+    UI.sheet({
+      center: true, title: '幫「' + U.esc(c.name) + '」加一個細項',
+      body: '<input class="input" id="sub-name" placeholder="例：早餐、公車、停車" maxlength="12">' +
+        '<div class="tiny faint" style="margin:8px 0 14px">之後記這個類別時就會出現在細項列。</div>' +
+        '<button class="btn primary block" id="sub-ok">新增並選起來</button>',
+      onMount: function (a) {
+        var input = a.el.querySelector('#sub-name');
+        input.focus();
+        function save() {
+          var id = Repo.addSub(catId, input.value);
+          if (!id) { UI.toast('先輸入名稱', '✏️'); return; }
+          if (st && st.categoryId === catId) st.subId = id;
+          a.close();
+          repaint();
+          UI.toast('細項加好了', '🏷️');
+        }
+        a.el.querySelector('#sub-ok').onclick = save;
+        input.onkeydown = function (e) { if (e.key === 'Enter') save(); };
+      }
+    });
+  }
+
   function repaint() {
     if (!api || !st) return;          /* 面板已經關掉就不用重繪 */
     var cs = sortedCats(st.type);
     if (!cs.some(function (c) { return c.id === st.categoryId; })) {
       st.categoryId = cs.length ? cs[0].id : null;
+      st.subId = null;
     }
+    if (st.subId && !Repo.sub(st.categoryId, st.subId)) st.subId = null;
     var snap = UI.captureFocus();
     api.setBody(render());
     bind(api);
@@ -203,17 +253,20 @@ var Entry = (function () {
 
     grid.style.maxHeight = '0px';
     var totalRows = Math.max(1, Math.round((grid.scrollHeight + gap) / rowH));
-
-    var cs = getComputedStyle(root);
-    var base = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-    Array.prototype.forEach.call(root.children, function (ch) {
-      if (!ch.classList.contains('sheet-body')) base += ch.offsetHeight;   /* 把手、標題列 */
-    });
-    base += scroll.scrollHeight + (foot ? foot.offsetHeight : 0);
+    /* 直接量「沒有類別格」時整張面板多高，比逐項加總可靠（邊距不會漏算） */
+    var base = root.getBoundingClientRect().height;
 
     var avail = window.innerHeight * 0.92 - base;
     var rows = Math.max(2, Math.min(totalRows, Math.floor((avail + gap) / rowH)));
     grid.style.maxHeight = (rows * rowH - gap) + 'px';
+
+    /* 第二道保險：上面是用「理論可用高度」算的，若實際捲動區更矮
+       （細項列展開、小螢幕…），再依實際高度收到整排，絕不切一半 */
+    var others = scroll.scrollHeight - grid.getBoundingClientRect().height;
+    var realRows = Math.floor((scroll.clientHeight - others + gap) / rowH);
+    if (realRows >= 1 && realRows < rows) {
+      grid.style.maxHeight = (realRows * rowH - gap) + 'px';
+    }
   }
 
   /* 長按類別 → 直接編輯（改名、換 emoji、換顏色、刪除） */
@@ -235,13 +288,22 @@ var Entry = (function () {
         if (st.type === t.dataset.type) return;
         st.type = t.dataset.type;
         var cs = sortedCats(st.type);
-        if (!cs.some(function (c) { return c.id === st.categoryId; })) st.categoryId = cs.length ? cs[0].id : null;
+        if (!cs.some(function (c) { return c.id === st.categoryId; })) {
+          st.categoryId = cs.length ? cs[0].id : null;
+          st.subId = null;
+        }
         repaint(); return;
       }
       if (t.dataset.cat) {
         if (lp && lp.consumed()) return;            /* 長按剛開了編輯視窗，別再選取 */
+        if (st.categoryId !== t.dataset.cat) st.subId = null;   /* 細項屬於類別 */
         st.categoryId = t.dataset.cat; UI.haptic(10); repaint(); return;
       }
+      if (t.dataset.sub) {
+        st.subId = (st.subId === t.dataset.sub) ? null : t.dataset.sub;  /* 再按一次取消 */
+        UI.haptic(8); repaint(); return;
+      }
+      if (t.hasAttribute('data-newsub')) { newSubSheet(); return; }
       if (t.hasAttribute('data-managecats')) { Manage.categorySheet(repaint); return; }
       if (t.hasAttribute('data-newcat')) { Manage.newCategorySheet(st.type, function (id) { st.categoryId = id; repaint(); }); return; }
       if (t.dataset.date) { st.date = t.dataset.date; repaint(); return; }
@@ -268,7 +330,7 @@ var Entry = (function () {
     var t = (st._combos || [])[parseInt(idx, 10)];
     if (!t) return;
     Repo.addTx({
-      type: t.type, amount: t.amount, categoryId: t.categoryId,
+      type: t.type, amount: t.amount, categoryId: t.categoryId, subId: t.subId,
       paymentMethodId: t.paymentMethodId, date: U.today(), note: t.note
     });
     celebrate(t.amount, t.type);
@@ -280,7 +342,7 @@ var Entry = (function () {
     if (!(v > 0)) { UI.toast('先輸入金額喔', '✏️'); return; }
     if (!st.categoryId) { UI.toast('選一個類別', '🏷️'); return; }
     var payload = {
-      type: st.type, amount: v, categoryId: st.categoryId,
+      type: st.type, amount: v, categoryId: st.categoryId, subId: st.subId,
       paymentMethodId: st.paymentMethodId, date: st.date, note: st.note
     };
     if (st.editId) {

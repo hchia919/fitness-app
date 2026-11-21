@@ -198,7 +198,7 @@ var Recur = (function () {
   function editSheet(id, preset) {
     var r = id ? Repo.recurrings().filter(function (x) { return x.id === id; })[0] : null;
     var d = r ? JSON.parse(JSON.stringify(r)) : Object.assign({
-      name: '', type: 'expense', amount: '', categoryId: (Repo.cats({ type: 'expense' })[0] || {}).id,
+      name: '', type: 'expense', amount: '', categoryId: (Repo.cats({ type: 'expense' })[0] || {}).id, subId: null,
       paymentMethodId: Repo.settings().lastPaymentId,
       freq: { unit: 'month', interval: 1 },
       nextDueDate: U.today(), endDate: null, autoPost: false, isActive: true, note: ''
@@ -267,6 +267,14 @@ var Recur = (function () {
           '<span class="e">' + c.emoji + '</span><span class="n">' + U.esc(c.name) + '</span></button>';
       }).join('') + '</div></div>';
 
+    var rsubs = d.categoryId ? Repo.subsOf(d.categoryId) : [];
+    if (rsubs.length) {
+      h += '<div class="field"><span class="label">細項（選填）</span><div class="chips">' +
+        rsubs.map(function (sb) {
+          return '<button class="chip ' + (sb.id === d.subId ? 'on' : '') + '" data-rsub="' + sb.id + '">' + U.esc(sb.name) + '</button>';
+        }).join('') + '</div></div>';
+    }
+
     h += '<div class="field"><span class="label">付款方式</span><div class="chips">' +
       Repo.pays().map(function (p) {
         return '<button class="chip ' + (p.id === d.paymentMethodId ? 'on' : '') + '" data-rpay="' + p.id + '">' + p.emoji + ' ' + U.esc(p.name) + '</button>';
@@ -314,7 +322,7 @@ var Recur = (function () {
       if (t.dataset.rtype) {
         d.type = t.dataset.rtype;
         var cs = Repo.cats({ type: d.type });
-        if (!cs.some(function (c) { return c.id === d.categoryId; })) d.categoryId = (cs[0] || {}).id;
+        if (!cs.some(function (c) { return c.id === d.categoryId; })) { d.categoryId = (cs[0] || {}).id; d.subId = null; }
         return editSheet._repaint();
       }
       if (t.dataset.freq) {
@@ -324,7 +332,14 @@ var Recur = (function () {
         return editSheet._repaint();
       }
       if (t.dataset.unit) { d.freq.unit = t.dataset.unit; return editSheet._repaint(); }
-      if (t.dataset.rcat) { d.categoryId = t.dataset.rcat; d._catTouched = true; return editSheet._repaint(); }
+      if (t.dataset.rcat) {
+        if (d.categoryId !== t.dataset.rcat) d.subId = null;    /* 細項屬於類別 */
+        d.categoryId = t.dataset.rcat; d._catTouched = true; return editSheet._repaint();
+      }
+      if (t.dataset.rsub) {
+        d.subId = (d.subId === t.dataset.rsub) ? null : t.dataset.rsub;
+        return editSheet._repaint();
+      }
       if (t.dataset.rpay) { d.paymentMethodId = t.dataset.rpay; return editSheet._repaint(); }
       if (t.hasAttribute('data-toggle-auto')) { d.autoPost = !d.autoPost; return editSheet._repaint(); }
       if (t.hasAttribute('data-toggle-active')) { d.isActive = !d.isActive; return editSheet._repaint(); }
@@ -340,7 +355,7 @@ var Recur = (function () {
       /* 邊打名稱邊猜類別；直接改選取狀態，不重繪，才不會打斷輸入 */
       if (f === 'name' && !id && !d._catTouched) {
         var g = guessCategory(d.name, d.type);
-        if (g && g !== d.categoryId) { d.categoryId = g; highlightCat(root, g); }
+        if (g && g !== d.categoryId) { d.categoryId = g; d.subId = null; highlightCat(root, g); }
       }
     };
 
@@ -348,7 +363,7 @@ var Recur = (function () {
       if (!String(d.name).trim()) { UI.toast('取個名字吧', '✏️'); return; }
       if (!(Number(d.amount) > 0)) { UI.toast('金額要大於 0', '💰'); return; }
       var payload = {
-        name: d.name, type: d.type, amount: Number(d.amount), categoryId: d.categoryId,
+        name: d.name, type: d.type, amount: Number(d.amount), categoryId: d.categoryId, subId: d.subId || null,
         paymentMethodId: d.paymentMethodId, freq: d.freq, nextDueDate: d.nextDueDate,
         endDate: d.endDate || null, autoPost: d.autoPost, isActive: d.isActive, note: d.note
       };

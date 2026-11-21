@@ -122,10 +122,12 @@ var Home = (function () {
   function txRow(t) {
     var c = Repo.cat(t.categoryId);
     var p = Repo.pay(t.paymentMethodId);
+    var sub = Repo.subName(t);
     return '<button class="tx" data-act="edit-tx" data-id="' + t.id + '" style="width:100%;text-align:left">' +
       '<span class="ava" style="background:' + U.tint(c.color, .16) + '">' + c.emoji + '</span>' +
-      '<span class="mid"><span class="n" style="display:block">' + U.esc(t.note || c.name) + '</span>' +
-      '<span class="s">' + U.fmtDayHeader(t.date) + ' · ' + c.name + ' · ' + p.emoji + p.name + (t.recurringId ? ' · 🔁' : '') + '</span></span>' +
+      '<span class="mid"><span class="n" style="display:block">' + U.esc(t.note || sub || c.name) + '</span>' +
+      '<span class="s">' + U.fmtDayHeader(t.date) + ' · ' + c.name + (sub ? ' › ' + U.esc(sub) : '') +
+      ' · ' + p.emoji + p.name + (t.recurringId ? ' · 🔁' : '') + '</span></span>' +
       '<span class="amt num ' + (t.type === 'income' ? 'pos' : '') + '">' +
       (t.type === 'income' ? '+' : '−') + U.money(t.amount) + '</span></button>';
   }

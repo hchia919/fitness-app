@@ -97,6 +97,7 @@ var App = (function () {
     'stats-type': function (d) { Stats.state.type = d.k; rerender(); },
 
     'go-cat': function (d) { go('cat', d.id); },
+    'edit-cat': function (d) { Manage.editCategorySheet(d.id); },
     'cat-search': function (d) {
       var c = Repo.cat(d.id);
       TxList.reset();

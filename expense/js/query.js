@@ -147,6 +147,26 @@ var Q = (function () {
     return arr[0] || null;
   }
 
+  /* 某個類別在期間內，各細項花了多少 */
+  function bySubcategory(p, categoryId, type) {
+    var items = list(p, type || null).filter(function (t) { return t.categoryId === categoryId; });
+    var map = {}, none = { id: null, name: '未指定細項', amount: 0, count: 0 };
+    items.forEach(function (t) {
+      if (!t.subId) { none.amount += t.amount; none.count++; return; }
+      if (!map[t.subId]) {
+        var sb = Repo.sub(t.categoryId, t.subId);
+        map[t.subId] = { id: t.subId, name: sb ? sb.name : '已刪除的細項', amount: 0, count: 0 };
+      }
+      map[t.subId].amount += t.amount; map[t.subId].count++;
+    });
+    var rows = Object.keys(map).map(function (k) { return map[k]; });
+    if (none.count) rows.push(none);
+    var total = rows.reduce(function (a, x) { return a + x.amount; }, 0);
+    rows.forEach(function (x) { x.pct = total ? x.amount / total * 100 : 0; });
+    rows.sort(function (a, b) { return b.amount - a.amount; });
+    return { rows: rows, total: total };
+  }
+
   /* 搜尋 + 篩選 */
   function search(f) {
     f = f || {};
@@ -161,7 +181,7 @@ var Q = (function () {
       if (f.max != null && f.max !== '' && t.amount > Number(f.max)) return false;
       if (kw) {
         var c = Repo.cat(t.categoryId), pm = Repo.pay(t.paymentMethodId);
-        var hay = (t.note + ' ' + c.name + ' ' + pm.name + ' ' + t.amount + ' ' + t.date).toLowerCase();
+        var hay = (t.note + ' ' + c.name + ' ' + Repo.subName(t) + ' ' + pm.name + ' ' + t.amount + ' ' + t.date).toLowerCase();
         if (hay.indexOf(kw) < 0) return false;
       }
       return true;
@@ -195,7 +215,7 @@ var Q = (function () {
     Repo.txs().forEach(function (t) {
       if (t.date < since || t.recurringId) return;
       if (type && t.type !== type) return;
-      var k = t.type + '|' + t.categoryId + '|' + (t.note || '').trim();
+      var k = t.type + '|' + t.categoryId + '|' + (t.subId || '') + '|' + (t.note || '').trim();
       if (!map[k]) map[k] = { count: 0, amounts: {}, last: t };
       map[k].count++;
       map[k].amounts[t.amount] = (map[k].amounts[t.amount] || 0) + 1;
@@ -214,7 +234,8 @@ var Q = (function () {
         var t = x.last;
         return {
           id: t.id, type: t.type, amount: Number(best),
-          categoryId: t.categoryId, paymentMethodId: t.paymentMethodId,
+          categoryId: t.categoryId, subId: t.subId || null,
+          paymentMethodId: t.paymentMethodId,
           note: t.note, count: x.count
         };
       });
@@ -222,7 +243,7 @@ var Q = (function () {
 
   return {
     list: list, sum: sum, totals: totals, dayTotal: dayTotal,
-    byCategory: byCategory, byPayment: byPayment,
+    byCategory: byCategory, byPayment: byPayment, bySubcategory: bySubcategory,
     dailySeries: dailySeries, barSeries: barSeries, monthlyTrend: monthlyTrend,
     cumulative: cumulative, topDay: topDay, topTx: topTx,
     search: search, groupByDay: groupByDay, quickCombos: quickCombos

@@ -33,6 +33,10 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
+      # 產物上傳完成後，Pages API 偶爾還查不到（上一次就是只差 0.4 秒就失敗），
+      # 等幾秒再部署，避免這種偶發失敗。
+      - name: 等待產物同步
+        run: sleep 15
       - name: 部署
         id: deployment
         uses: actions/deploy-pages@v4
